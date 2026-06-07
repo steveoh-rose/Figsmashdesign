@@ -691,28 +691,39 @@ async function _gunzip(bytes){
       _deepLinkImported=true;
       var _cmc=MAPS.find(function(m){ return m.id==='custom'; }); if(_cmc){ currentMap=_cmc; pendingMap=_cmc; }
       history.replaceState(null,'',location.pathname);
+      // Full-screen capturing overlay: swallows the first click so START BATTLE
+      // (or anything else) can't run before the async clipboard read resolves.
+      var overlay=document.createElement('div');
+      overlay.style.cssText='position:fixed;inset:0;z-index:9998;background:rgba(8,12,24,0.55);display:flex;align-items:center;justify-content:center;cursor:pointer;backdrop-filter:blur(2px);';
       var bannerEl=document.createElement('div');
-      bannerEl.style.cssText='position:fixed;top:18px;left:50%;transform:translateX(-50%);background:#0d99ff;color:#fff;font-family:Inter,sans-serif;font-size:13px;font-weight:600;padding:9px 20px;border-radius:20px;z-index:9999;box-shadow:0 4px 24px rgba(0,0,0,.28);max-width:80vw;text-align:center;cursor:pointer;';
-      bannerEl.textContent='📋 Click anywhere to paste your frame from clipboard';
-      document.body.appendChild(bannerEl);
+      bannerEl.style.cssText='background:#0d99ff;color:#fff;font-family:Inter,sans-serif;font-size:15px;font-weight:600;padding:18px 28px;border-radius:14px;box-shadow:0 8px 32px rgba(0,0,0,.4);max-width:80vw;text-align:center;';
+      bannerEl.textContent='📋 Click to paste your frame from clipboard';
+      overlay.appendChild(bannerEl);
+      document.body.appendChild(overlay);
       var _consumed=false;
-      var _onGesture=async function(){
+      var _onGesture=async function(ev){
+        if(ev){ ev.preventDefault(); ev.stopPropagation(); }
         if(_consumed) return; _consumed=true;
         try{
           var txt=await (navigator as any).clipboard.readText();
           var data=JSON.parse(txt);
           var n=importFrame(data);
-          bannerEl.style.background='#0d99ff';
+          // Refresh the arena now so the imported layers are live before the
+          // user starts the match.
+          try{ if(currentMap && currentMap.id==='custom') spawnProps(); }catch(e){}
           bannerEl.textContent='🎮 “'+(data.name||'Your Frame').slice(0,32)+'” imported ('+n+' layers)';
-          setTimeout(function(){ bannerEl.style.transition='opacity .5s'; bannerEl.style.opacity='0'; setTimeout(function(){ if(bannerEl.parentNode) bannerEl.parentNode.removeChild(bannerEl); },600); },2500);
+          overlay.style.cursor='default';
+          setTimeout(function(){
+            overlay.style.transition='opacity .4s'; overlay.style.opacity='0';
+            setTimeout(function(){ if(overlay.parentNode) overlay.parentNode.removeChild(overlay); },450);
+          },1200);
         }catch(err){
           bannerEl.style.background='#d9534f';
-          bannerEl.textContent='⚠ Couldn’t read clipboard: '+((err&&(err as any).message)||err);
-          _consumed=false; // allow retry
+          bannerEl.textContent='⚠ Couldn’t read clipboard: '+((err&&(err as any).message)||err)+' — click to retry';
+          _consumed=false;
         }
       };
-      window.addEventListener('click',_onGesture,{once:false});
-      window.addEventListener('keydown',_onGesture,{once:false});
+      overlay.addEventListener('click',_onGesture,true);
       return;
     }
   }catch(e){}
