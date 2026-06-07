@@ -655,32 +655,41 @@ document.getElementById('model').value=lvl.id; applyLevel(lvl.id);
 
 // ---- deep-link: Figma plugin launches the game with #figsmash=BASE64 in the URL ----
 (function(){
-  var PREFIX='#figsmash=';
-  if(!location.hash.startsWith(PREFIX)) return;
-  var bannerMsg='', bannerColor='#0d99ff';
+  // figma.openExternal strips #fragments when handing off to the browser, so
+  // the plugin posts ?figsmash=… in the query string. Keep #figsmash= as a
+  // fallback for older plugin builds and for users pasting URLs by hand.
+  var raw=null;
+  try{ var qp=new URLSearchParams(location.search); if(qp.has('figsmash')) raw=qp.get('figsmash'); }catch(e){}
+  if(!raw && location.hash.indexOf('#figsmash=')===0) raw=location.hash.slice('#figsmash='.length);
+  var bannerMsg='', bannerColor='#0d99ff', bannerHold=6000;
+  if(!raw){
+    if(location.hash || location.search){
+      bannerMsg='ℹ No figsmash payload found. search="'+location.search.slice(0,60)+'" hash="'+location.hash.slice(0,60)+'"';
+      bannerColor='#e67e00'; bannerHold=8000;
+    } else { return; }
+  } else {
   try{
-    var raw=location.hash.slice(PREFIX.length);
-    // The hash may arrive percent-encoded ("+"→"%2B", "/"→"%2F", "="→"%3D")
-    // after passing through openExternal / browser address bar. Decode first.
-    var encoded=decodeURIComponent(raw).replace(/-/g,'+').replace(/_/g,'/');
+    // URLSearchParams already decoded "%2B" → "+", etc. Accept URL-safe alphabet too.
+    var encoded=String(raw).replace(/-/g,'+').replace(/_/g,'/');
     while(encoded.length%4) encoded+='=';
     var bin=atob(encoded);
     var json=decodeURIComponent(escape(bin));
     var data=JSON.parse(json);
     var n=importFrame(data);
-    history.replaceState(null,'',location.pathname+location.search);
+    history.replaceState(null,'',location.pathname);
     var _cm=MAPS.find(function(m){ return m.id==='custom'; }); if(_cm){ currentMap=_cm; pendingMap=_cm; _deepLinkImported=true; }
     bannerMsg='🎮 “'+(data.name||'Your Frame').slice(0,32)+'” imported ('+n+' layers) — selected as your stage!';
   }catch(e){
     console.warn('[Fig Smash] Deep-link import failed:',e);
     bannerMsg='⚠ Couldn’t import frame from Figma: '+((e&&e.message)||e);
-    bannerColor='#d9534f';
+    bannerColor='#d9534f'; bannerHold=10000;
   }
+  } // end raw-present block
   var banner=document.createElement('div');
   banner.style.cssText='position:fixed;top:18px;left:50%;transform:translateX(-50%);background:'+bannerColor+';color:#fff;font-family:Inter,sans-serif;font-size:13px;font-weight:600;padding:9px 20px;border-radius:20px;z-index:9999;box-shadow:0 4px 24px rgba(0,0,0,.28);pointer-events:none;opacity:1;transition:opacity 0.5s ease;max-width:80vw;text-align:center;';
   banner.textContent=bannerMsg;
   document.body.appendChild(banner);
-  setTimeout(function(){ banner.style.opacity='0'; setTimeout(function(){ if(banner.parentNode)banner.parentNode.removeChild(banner); },600); },6000);
+  setTimeout(function(){ banner.style.opacity='0'; setTimeout(function(){ if(banner.parentNode)banner.parentNode.removeChild(banner); },600); },bannerHold);
 })();
 
 if (_deepLinkImported) { openCharSelect(); } else { openMapSelectFirst(); }
