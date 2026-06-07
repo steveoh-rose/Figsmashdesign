@@ -244,7 +244,7 @@
 			launchBtn.onclick = function () {
 			  if (!currentEncoded) return;
 			  var base = appUrlInput.value.trim().replace(/\/$/, '');
-			  var url = base + '/#figsmash=' + currentEncoded;
+			  var url = base + '/?figsmash=' + currentEncoded;
 			  parent.postMessage({ pluginMessage: { type: 'launch', url: url } }, '*');
 			  statusEl.textContent = 'Launched — check your browser!';
 			  statusEl.style.color = '#0d99ff';
