@@ -54,8 +54,8 @@ button:hover { filter: brightness(0.97); }
 </div>
 
 <div class="hint">
-  <b>Launch</b> opens Fig Smash with the frame pre-loaded (gzip-compressed payload).<br />
-  <b>Copy / Download</b> gives you the full lossless PNG export.
+  <b>Launch</b> copies the full payload to your clipboard and opens Fig Smash — click anywhere in the app to paste it in.<br />
+  <b>Copy / Download</b> gives you the raw JSON for manual paste.
 </div>
 <div id="dbg" style="font-family: ui-monospace, Menlo, monospace; font-size: 9px; color: #aaa; margin-top: 8px; word-break: break-all; line-height: 1.5;"></div>
 
@@ -66,7 +66,7 @@ var warn = document.getElementById('warn');
 var launchBtn = document.getElementById('launch');
 var appUrlInput = document.getElementById('appurl');
 var dbg = document.getElementById('dbg');
-var currentFull = null, currentUrl = null;
+var currentFull = null;
 
 function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
 function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
@@ -74,84 +74,57 @@ var savedUrl = lsGet('figsmash.appurl');
 if (savedUrl) appUrlInput.value = savedUrl;
 appUrlInput.addEventListener('change', function () { lsSet('figsmash.appurl', appUrlInput.value.trim()); });
 
-function utf8ToBytes(str) {
-  if (typeof TextEncoder !== 'undefined') return new TextEncoder().encode(str);
-  // Fallback for older runtimes
-  var u = unescape(encodeURIComponent(str));
-  var b = new Uint8Array(u.length);
-  for (var i = 0; i < u.length; i++) b[i] = u.charCodeAt(i);
-  return b;
-}
-function bytesToB64Url(bytes) {
-  var bin = '';
-  for (var i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
-  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-}
-async function gzipB64Url(str) {
-  if (typeof CompressionStream === 'undefined') throw new Error('CompressionStream unavailable');
-  var cs = new CompressionStream('gzip');
-  var w = cs.writable.getWriter(); w.write(utf8ToBytes(str)); w.close();
-  var ab = await new Response(cs.readable).arrayBuffer();
-  return bytesToB64Url(new Uint8Array(ab));
-}
-function plainB64Url(str) { return bytesToB64Url(utf8ToBytes(str)); }
-
-onmessage = async function (e) {
+onmessage = function (e) {
   var msg = e.data.pluginMessage; if (!msg) return;
   if (typeof msg.debug === 'string') dbg.textContent = msg.debug;
   if (msg.type === 'frame') {
     currentFull = msg.full;
     out.value = JSON.stringify(msg.full);
     var count = msg.full.nodes.length;
-    statusEl.textContent = 'Compressing ' + count + ' layer' + (count === 1 ? '' : 's') + '…';
-    statusEl.style.color = '#0d6efd';
-    warn.style.display = count >= 40 ? '' : 'none';
-    launchBtn.disabled = true;
-    currentUrl = null;
-    var base = (appUrlInput.value.trim() || 'https://dog-modem-49729801.figma.site').replace(/\/$/, '');
-    var leanJson = JSON.stringify(msg.lean);
-    var note = '';
-    // Strategy: gzip + ?figsmashz= (full fidelity) → plain base64 + ?figsmash= (geometry only) fallback.
-    try {
-      var enc = await gzipB64Url(leanJson);
-      currentUrl = base + '/?figsmashz=' + enc;
-      note = 'gzip ' + enc.length + ' chars (raw ' + leanJson.length + ')';
-    } catch (gzErr) {
-      try {
-        // Fallback: strip images so the plain base64 URL stays small.
-        var stripped = Object.assign({}, msg.lean, {
-          nodes: msg.lean.nodes.map(function(n) { var c = Object.assign({}, n); delete c.img; return c; }),
-        });
-        var plain = plainB64Url(JSON.stringify(stripped));
-        currentUrl = base + '/?figsmash=' + plain;
-        note = 'plain ' + plain.length + ' chars (no images: ' + (gzErr.message || gzErr) + ')';
-      } catch (plainErr) {
-        statusEl.textContent = 'Encode failed: ' + ((plainErr && plainErr.message) || plainErr);
-        statusEl.style.color = '#d9534f';
-        dbg.textContent += ' · ENCODE FAIL';
-        return;
-      }
-    }
     statusEl.textContent = count + ' layer' + (count === 1 ? '' : 's') + ' from "' + msg.full.name + '" — ready';
     statusEl.style.color = '#1db954';
+    warn.style.display = count >= 40 ? '' : 'none';
     launchBtn.disabled = false;
-    dbg.textContent += ' · ' + note;
+    dbg.textContent += ' · json ' + out.value.length + ' chars';
   } else if (msg.type === 'status') {
     statusEl.textContent = msg.msg; statusEl.style.color = '#0d6efd';
     launchBtn.disabled = true; warn.style.display = 'none';
   } else if (msg.type === 'error') {
-    currentFull = null; currentUrl = null; out.value = '';
+    currentFull = null; out.value = '';
     statusEl.textContent = msg.msg; statusEl.style.color = '#d9534f';
     launchBtn.disabled = true; warn.style.display = 'none';
   }
 };
 
-launchBtn.onclick = function () {
-  if (!currentUrl) { statusEl.textContent = 'No URL ready yet — wait for compression to finish.'; statusEl.style.color = '#d9534f'; return; }
-  parent.postMessage({ pluginMessage: { type: 'launch', url: currentUrl } }, '*');
-  statusEl.textContent = 'Launched — check your browser!';
+// Strategy: write the full payload (with images) to the clipboard from the
+// plugin UI iframe (which has a user gesture from the click), open the app
+// with ?figsmash=clipboard, and let the app paste it on first user click.
+// No URL size limit, no backend.
+async function copyToClipboard(text) {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    return navigator.clipboard.writeText(text);
+  }
+  // Fallback via hidden textarea
+  var ta = document.createElement('textarea');
+  ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+  document.body.appendChild(ta); ta.select();
+  try { document.execCommand('copy'); } finally { document.body.removeChild(ta); }
+}
+
+launchBtn.onclick = async function () {
+  if (!currentFull) { statusEl.textContent = 'No frame ready.'; statusEl.style.color = '#d9534f'; return; }
+  var base = (appUrlInput.value.trim() || 'https://dog-modem-49729801.figma.site').replace(/\/$/, '');
+  try {
+    await copyToClipboard(out.value);
+  } catch (e) {
+    statusEl.textContent = 'Clipboard blocked: ' + ((e && e.message) || e);
+    statusEl.style.color = '#d9534f';
+    return;
+  }
+  var url = base + '/?figsmash=clipboard';
+  parent.postMessage({ pluginMessage: { type: 'launch', url: url } }, '*');
+  statusEl.textContent = '📋 Copied! Click in the Fig Smash tab to paste your frame.';
   statusEl.style.color = '#0d99ff';
-  dbg.textContent += ' · url len ' + currentUrl.length;
 };
 
 document.getElementById('refresh').onclick = function () {

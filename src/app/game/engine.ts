@@ -682,6 +682,40 @@ async function _gunzip(bytes){
     if(qp.has('figsmashz')) rawGz=qp.get('figsmashz');
     else if(qp.has('figsmash')) rawPlain=qp.get('figsmash');
   }catch(e){}
+  // Clipboard hand-off: plugin copied the full payload to clipboard, opened us
+  // with ?figsmash=clipboard. Wait for a user gesture (clipboard read requires
+  // one), then paste + import.
+  try{
+    var _qpc=new URLSearchParams(location.search);
+    if(_qpc.get('figsmash')==='clipboard'){
+      _deepLinkImported=true;
+      var _cmc=MAPS.find(function(m){ return m.id==='custom'; }); if(_cmc){ currentMap=_cmc; pendingMap=_cmc; }
+      history.replaceState(null,'',location.pathname);
+      var bannerEl=document.createElement('div');
+      bannerEl.style.cssText='position:fixed;top:18px;left:50%;transform:translateX(-50%);background:#0d99ff;color:#fff;font-family:Inter,sans-serif;font-size:13px;font-weight:600;padding:9px 20px;border-radius:20px;z-index:9999;box-shadow:0 4px 24px rgba(0,0,0,.28);max-width:80vw;text-align:center;cursor:pointer;';
+      bannerEl.textContent='📋 Click anywhere to paste your frame from clipboard';
+      document.body.appendChild(bannerEl);
+      var _consumed=false;
+      var _onGesture=async function(){
+        if(_consumed) return; _consumed=true;
+        try{
+          var txt=await (navigator as any).clipboard.readText();
+          var data=JSON.parse(txt);
+          var n=importFrame(data);
+          bannerEl.style.background='#0d99ff';
+          bannerEl.textContent='🎮 “'+(data.name||'Your Frame').slice(0,32)+'” imported ('+n+' layers)';
+          setTimeout(function(){ bannerEl.style.transition='opacity .5s'; bannerEl.style.opacity='0'; setTimeout(function(){ if(bannerEl.parentNode) bannerEl.parentNode.removeChild(bannerEl); },600); },2500);
+        }catch(err){
+          bannerEl.style.background='#d9534f';
+          bannerEl.textContent='⚠ Couldn’t read clipboard: '+((err&&(err as any).message)||err);
+          _consumed=false; // allow retry
+        }
+      };
+      window.addEventListener('click',_onGesture,{once:false});
+      window.addEventListener('keydown',_onGesture,{once:false});
+      return;
+    }
+  }catch(e){}
   if(!rawPlain && !rawGz && location.hash.indexOf('#figsmash=')===0) rawPlain=location.hash.slice('#figsmash='.length);
   if(!rawPlain && !rawGz){
     if(location.hash || location.search){
