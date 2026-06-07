@@ -21,10 +21,12 @@ const {
   sndKO, sndFQ, sndWin,
 } = _audio;
 
-let _inited = false;
+// Guard on window, not module scope, so Vite HMR re-evaluating this file
+// doesn't boot a second game loop racing the first for the same DOM nodes
+// (manifests as scoreboard flicker between two parallel score timelines).
 export function mountEngine(): void {
-  if (_inited) return;
-  _inited = true;
+  if ((window as any).__figsmashInited) return;
+  (window as any).__figsmashInited = true;
 
 "use strict";
 const _img={}; (function(){ for(const k in SPRITES){ if(SPRITES[k]){ const im=new Image(); im._ok=false; im.onload=()=>im._ok=true; im.src=SPRITES[k]; _img[k]=im; } } })();
@@ -653,45 +655,90 @@ buildShapeMenu();
 sync();
 document.getElementById('model').value=lvl.id; applyLevel(lvl.id);
 
-// ---- deep-link: Figma plugin launches the game with #figsmash=BASE64 in the URL ----
-(function(){
-  // figma.openExternal strips #fragments when handing off to the browser, so
-  // the plugin posts ?figsmash=… in the query string. Keep #figsmash= as a
-  // fallback for older plugin builds and for users pasting URLs by hand.
-  var raw=null;
-  try{ var qp=new URLSearchParams(location.search); if(qp.has('figsmash')) raw=qp.get('figsmash'); }catch(e){}
-  if(!raw && location.hash.indexOf('#figsmash=')===0) raw=location.hash.slice('#figsmash='.length);
-  var bannerMsg='', bannerColor='#0d99ff', bannerHold=6000;
-  if(!raw){
-    if(location.hash || location.search){
-      bannerMsg='ℹ No figsmash payload found. search="'+location.search.slice(0,60)+'" hash="'+location.hash.slice(0,60)+'"';
-      bannerColor='#e67e00'; bannerHold=8000;
-    } else { return; }
-  } else {
-  try{
-    // URLSearchParams already decoded "%2B" → "+", etc. Accept URL-safe alphabet too.
-    var encoded=String(raw).replace(/-/g,'+').replace(/_/g,'/');
-    while(encoded.length%4) encoded+='=';
-    var bin=atob(encoded);
-    var json=decodeURIComponent(escape(bin));
-    var data=JSON.parse(json);
-    var n=importFrame(data);
-    history.replaceState(null,'',location.pathname);
-    var _cm=MAPS.find(function(m){ return m.id==='custom'; }); if(_cm){ currentMap=_cm; pendingMap=_cm; _deepLinkImported=true; }
-    bannerMsg='🎮 “'+(data.name||'Your Frame').slice(0,32)+'” imported ('+n+' layers) — selected as your stage!';
-  }catch(e){
-    console.warn('[Fig Smash] Deep-link import failed:',e);
-    bannerMsg='⚠ Couldn’t import frame from Figma: '+((e&&e.message)||e);
-    bannerColor='#d9534f'; bannerHold=10000;
-  }
-  } // end raw-present block
+// ---- deep-link: Figma plugin launches the game with ?figsmash=… or ?figsmashz=… ----
+function _showDeepLinkBanner(msg, color, hold){
   var banner=document.createElement('div');
-  banner.style.cssText='position:fixed;top:18px;left:50%;transform:translateX(-50%);background:'+bannerColor+';color:#fff;font-family:Inter,sans-serif;font-size:13px;font-weight:600;padding:9px 20px;border-radius:20px;z-index:9999;box-shadow:0 4px 24px rgba(0,0,0,.28);pointer-events:none;opacity:1;transition:opacity 0.5s ease;max-width:80vw;text-align:center;';
-  banner.textContent=bannerMsg;
+  banner.style.cssText='position:fixed;top:18px;left:50%;transform:translateX(-50%);background:'+color+';color:#fff;font-family:Inter,sans-serif;font-size:13px;font-weight:600;padding:9px 20px;border-radius:20px;z-index:9999;box-shadow:0 4px 24px rgba(0,0,0,.28);pointer-events:none;opacity:1;transition:opacity 0.5s ease;max-width:80vw;text-align:center;';
+  banner.textContent=msg;
   document.body.appendChild(banner);
-  setTimeout(function(){ banner.style.opacity='0'; setTimeout(function(){ if(banner.parentNode)banner.parentNode.removeChild(banner); },600); },bannerHold);
+  setTimeout(function(){ banner.style.opacity='0'; setTimeout(function(){ if(banner.parentNode)banner.parentNode.removeChild(banner); },600); },hold||6000);
+}
+function _b64UrlToBytes(s){
+  var b64=String(s).replace(/-/g,'+').replace(/_/g,'/'); while(b64.length%4) b64+='=';
+  var bin=atob(b64); var out=new Uint8Array(bin.length);
+  for(var i=0;i<bin.length;i++) out[i]=bin.charCodeAt(i);
+  return out;
+}
+async function _gunzip(bytes){
+  var ds=new (window as any).DecompressionStream('gzip');
+  var w=ds.writable.getWriter(); w.write(bytes); w.close();
+  var ab=await new Response(ds.readable).arrayBuffer();
+  return new TextDecoder().decode(new Uint8Array(ab));
+}
+(function(){
+  var rawPlain=null, rawGz=null;
+  try{
+    var qp=new URLSearchParams(location.search);
+    if(qp.has('figsmashz')) rawGz=qp.get('figsmashz');
+    else if(qp.has('figsmash')) rawPlain=qp.get('figsmash');
+  }catch(e){}
+  if(!rawPlain && !rawGz && location.hash.indexOf('#figsmash=')===0) rawPlain=location.hash.slice('#figsmash='.length);
+  if(!rawPlain && !rawGz){
+    if(location.hash || location.search){
+      _showDeepLinkBanner('ℹ No figsmash payload found. search="'+location.search.slice(0,60)+'" hash="'+location.hash.slice(0,60)+'"','#e67e00',8000);
+    }
+    return;
+  }
+  // Mark synchronously so the bottom-of-engine branching skips map select even
+  // though the import itself may resolve a tick later (gzip path is async).
+  _deepLinkImported=true;
+  var _cm=MAPS.find(function(m){ return m.id==='custom'; }); if(_cm){ currentMap=_cm; pendingMap=_cm; }
+  history.replaceState(null,'',location.pathname);
+  (async function(){
+    try{
+      var json;
+      if(rawGz){
+        json=await _gunzip(_b64UrlToBytes(rawGz));
+      } else {
+        var bytes=_b64UrlToBytes(rawPlain);
+        var bin=''; for(var i=0;i<bytes.length;i++) bin+=String.fromCharCode(bytes[i]);
+        json=decodeURIComponent(escape(bin));
+      }
+      var data=JSON.parse(json);
+      var n=importFrame(data);
+      _showDeepLinkBanner('🎮 “'+(data.name||'Your Frame').slice(0,32)+'” imported ('+n+' layers) — selected as your stage!','#0d99ff',6000);
+    }catch(e){
+      console.warn('[Fig Smash] Deep-link import failed:',e);
+      _showDeepLinkBanner('⚠ Couldn’t import frame from Figma: '+((e&&e.message)||e),'#d9534f',10000);
+    }
+  })();
 })();
 
-if (_deepLinkImported) { openCharSelect(); } else { openMapSelectFirst(); }
+// ---- postMessage import: full-quality launch from Figma plugin via window.open ----
+var _openerTimeout = null;
+window.addEventListener('message', function(e) {
+  if (!e.data || e.data.type !== 'figsmash-import' || !e.data.payload) return;
+  if (_openerTimeout) { clearTimeout(_openerTimeout); _openerTimeout = null; }
+  try {
+    importFrame(e.data.payload);
+    var _cm2 = MAPS.find(function(m) { return m.id === 'custom'; }); if(_cm2){ currentMap=_cm2; pendingMap=_cm2; }
+    openCharSelect();
+  } catch(err) {
+    console.warn('[Fig Smash] postMessage import failed:', err);
+    openMapSelectFirst();
+  }
+});
+if (window.opener) {
+  try { (window.opener as any).postMessage({ type: 'figsmash-ready' }, '*'); } catch(e) {}
+}
+
+if (_deepLinkImported) {
+  openCharSelect();
+} else if (window.opener) {
+  // Opened from plugin — wait up to 3s for full payload before falling back to map select
+  _openerTimeout = setTimeout(function() { _openerTimeout = null; openMapSelectFirst(); }, 3000);
+} else {
+  openMapSelectFirst();
+}
 
 }
