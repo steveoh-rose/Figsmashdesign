@@ -116,6 +116,7 @@ const MAPS=[
   {id:'custom',  name:'Your Frame', sub:'Import', accent:'#0d99ff', build:spawnFrame},
 ];
 let currentMap=MAPS[0], pendingMap=MAPS[0];
+let _deepLinkImported = false;
 try{ const _sf=localStorage.getItem('figsmash.frame'); if(_sf) customFrame=JSON.parse(_sf); }catch(e){}
 function spawnProps(){ (currentMap.build||spawnSpotify)(); }
 spawnProps();
@@ -668,7 +669,7 @@ document.getElementById('model').value=lvl.id; applyLevel(lvl.id);
     var data=JSON.parse(json);
     var n=importFrame(data);
     history.replaceState(null,'',location.pathname+location.search);
-    var _cm=MAPS.find(function(m){ return m.id==='custom'; }); if(_cm){ currentMap=_cm; pendingMap=_cm; }
+    var _cm=MAPS.find(function(m){ return m.id==='custom'; }); if(_cm){ currentMap=_cm; pendingMap=_cm; _deepLinkImported=true; }
     bannerMsg='🎮 “'+(data.name||'Your Frame').slice(0,32)+'” imported ('+n+' layers) — selected as your stage!';
   }catch(e){
     console.warn('[Fig Smash] Deep-link import failed:',e);
@@ -682,6 +683,6 @@ document.getElementById('model').value=lvl.id; applyLevel(lvl.id);
   setTimeout(function(){ banner.style.opacity='0'; setTimeout(function(){ if(banner.parentNode)banner.parentNode.removeChild(banner); },600); },6000);
 })();
 
-openMapSelectFirst();
+if (_deepLinkImported) { openCharSelect(); } else { openMapSelectFirst(); }
 
 }
