@@ -106,7 +106,15 @@ async function send() {
 figma.ui.onmessage = function (msg) {
 	if (msg && msg.type === 'refresh') send();
 	if (msg && msg.type === 'close') figma.closePlugin();
-	if (msg && msg.type === 'launch') figma.openExternal(msg.url);
+	if (msg && msg.type === 'launch') {
+		var urlLen = (msg.url || '').length;
+		try {
+			figma.openExternal(msg.url);
+			figma.notify('Opening Fig Smash… (URL ' + urlLen + ' chars)');
+		} catch (e) {
+			figma.notify('openExternal failed (' + urlLen + ' chars): ' + ((e && e.message) || e), { error: true });
+		}
+	}
 };
 send();
 figma.on('selectionchange', send);
