@@ -1,0 +1,60 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  :root{ font-family:Inter,-apple-system,'Segoe UI',sans-serif; }
+  *{ box-sizing:border-box; }
+  body{ margin:0; padding:14px; background:#fff; color:#1e1e1e; }
+  h3{ margin:0 0 4px; font-size:14px; }
+  .sub{ font-size:11px; color:#7a7a85; margin-bottom:10px; }
+  #status{ font-size:12px; font-weight:600; margin:0 0 8px; color:#0d6efd; }
+  textarea{ width:100%; height:210px; resize:vertical; font-family:ui-monospace,Menlo,monospace; font-size:10px; border:1px solid #e4e4e8; border-radius:8px; padding:8px; background:#fafafa; color:#333; }
+  .row{ display:flex; gap:8px; margin-top:10px; }
+  button{ flex:1; font-family:inherit; font-size:12px; font-weight:600; padding:9px; border-radius:8px; border:1px solid #d6d6da; background:#f4f4f6; color:#333; cursor:pointer; }
+  button.prim{ background:#0d99ff; border-color:#0d99ff; color:#fff; }
+  button:hover{ filter:brightness(.97); }
+  .hint{ font-size:10.5px; color:#8a8a95; margin-top:11px; line-height:1.55; }
+  .hint b{ color:#555; }
+</style>
+</head>
+<body>
+  <h3>Fig Smash Exporter</h3>
+  <div class="sub">Select a frame on the canvas to export it as a destructible stage.</div>
+  <div id="status">Select a frame…</div>
+  <textarea id="out" readonly placeholder="Frame data will appear here…"></textarea>
+  <div class="row">
+    <button id="copy" class="prim">Copy</button>
+    <button id="dl">Download .json</button>
+    <button id="refresh">Re-export</button>
+  </div>
+  <div class="hint">Then in <b>Fig Smash</b>: pick your character &rarr; <b>Choose your stage</b> &rarr; <b>Import Figma frame</b> &rarr; paste (or choose the file) &rarr; <b>START BATTLE</b>.</div>
+  <script>
+    var out = document.getElementById('out'), status = document.getElementById('status');
+    var current = null;
+    onmessage = function (e) {
+      var msg = e.data.pluginMessage; if (!msg) return;
+      if (msg.type === 'frame') {
+        current = msg.payload; out.value = JSON.stringify(msg.payload);
+        status.textContent = msg.payload.nodes.length + ' layers from “' + msg.payload.name + '” — Copy it';
+        status.style.color = '#1db954';
+      } else if (msg.type === 'status') {
+        status.textContent = msg.msg; status.style.color = '#0d6efd';
+      } else if (msg.type === 'error') {
+        current = null; out.value = ''; status.textContent = msg.msg; status.style.color = '#d9534f';
+      }
+    };
+    document.getElementById('refresh').onclick = function () { parent.postMessage({ pluginMessage: { type: 'refresh' } }, '*'); };
+    document.getElementById('copy').onclick = function () {
+      if (!out.value) return; out.select(); document.execCommand('copy');
+      status.textContent = 'Copied! Paste it into Fig Smash.'; status.style.color = '#0d6efd';
+    };
+    document.getElementById('dl').onclick = function () {
+      if (!current) return;
+      var blob = new Blob([out.value], { type: 'application/json' });
+      var a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+      a.download = (current.name || 'frame').replace(/[^a-z0-9_-]+/gi, '_') + '.figsmash.json'; a.click();
+    };
+  </script>
+</body>
+</html>

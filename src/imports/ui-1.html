@@ -1,0 +1,269 @@
+<!doctype html>
+<html>
+	<head>
+		<meta charset="utf-8" />
+		<style>
+			:root {
+				font-family:
+					Inter,
+					-apple-system,
+					'Segoe UI',
+					sans-serif;
+			}
+			* {
+				box-sizing: border-box;
+			}
+			body {
+				margin: 0;
+				padding: 14px;
+				background: #fff;
+				color: #1e1e1e;
+			}
+			h3 {
+				margin: 0 0 4px;
+				font-size: 14px;
+			}
+			.sub {
+				font-size: 11px;
+				color: #7a7a85;
+				margin-bottom: 10px;
+			}
+			#status {
+				font-size: 12px;
+				font-weight: 600;
+				margin: 0 0 6px;
+				color: #0d6efd;
+				min-height: 18px;
+			}
+			#warn {
+				font-size: 11px;
+				color: #e67e00;
+				margin: -2px 0 8px;
+				display: none;
+			}
+			.launch-row {
+				margin-top: 4px;
+			}
+			.launch-row button {
+				width: 100%;
+				font-family: inherit;
+				font-size: 13px;
+				font-weight: 700;
+				padding: 11px;
+				border-radius: 8px;
+				border: none;
+				background: #0d99ff;
+				color: #fff;
+				cursor: pointer;
+			}
+			.launch-row button:hover {
+				background: #0a82d9;
+			}
+			.launch-row button:disabled {
+				background: #a0c8f0;
+				cursor: default;
+			}
+			.url-row {
+				display: flex;
+				align-items: center;
+				gap: 6px;
+				margin-top: 8px;
+			}
+			.url-row label {
+				font-size: 10.5px;
+				color: #7a7a85;
+				white-space: nowrap;
+			}
+			.url-row input {
+				flex: 1;
+				font-size: 11px;
+				font-family: ui-monospace, Menlo, monospace;
+				border: 1px solid #e4e4e8;
+				border-radius: 6px;
+				padding: 5px 7px;
+				background: #fafafa;
+				color: #333;
+			}
+			.divider {
+				border: none;
+				border-top: 1px solid #ebebef;
+				margin: 10px 0 8px;
+			}
+			.sec-label {
+				font-size: 11px;
+				color: #7a7a85;
+				margin-bottom: 6px;
+			}
+			textarea {
+				width: 100%;
+				height: 160px;
+				resize: vertical;
+				font-family: ui-monospace, Menlo, monospace;
+				font-size: 10px;
+				border: 1px solid #e4e4e8;
+				border-radius: 8px;
+				padding: 8px;
+				background: #fafafa;
+				color: #333;
+			}
+			.row {
+				display: flex;
+				gap: 8px;
+				margin-top: 8px;
+			}
+			button {
+				flex: 1;
+				font-family: inherit;
+				font-size: 12px;
+				font-weight: 600;
+				padding: 9px;
+				border-radius: 8px;
+				border: 1px solid #d6d6da;
+				background: #f4f4f6;
+				color: #333;
+				cursor: pointer;
+			}
+			button:hover {
+				filter: brightness(0.97);
+			}
+			.hint {
+				font-size: 10.5px;
+				color: #8a8a95;
+				margin-top: 10px;
+				line-height: 1.55;
+			}
+			.hint b {
+				color: #555;
+			}
+		</style>
+	</head>
+	<body>
+		<h3>Fig Smash Exporter</h3>
+		<div class="sub">
+			Select a frame on the canvas to play it as a destructible stage.
+		</div>
+
+		<div id="status">Select a frame&hellip;</div>
+		<div id="warn">&#9888; Only the first 40 layers will be exported.</div>
+
+		<div class="launch-row">
+			<button id="launch" disabled>
+				&#127918; Launch in Fig Smash &nearr;
+			</button>
+		</div>
+
+		<div class="url-row">
+			<label>App URL</label>
+			<input
+				id="appurl"
+				type="text"
+				value="https://dog-modem-49729801.figma.site"
+				placeholder="https://dog-modem-49729801.figma.site"
+			/>
+		</div>
+
+		<hr class="divider" />
+
+		<div class="sec-label">
+			Full export with images &mdash; for Copy / Download:
+		</div>
+		<textarea
+			id="out"
+			readonly
+			placeholder="Frame data will appear here&hellip;"
+		></textarea>
+		<div class="row">
+			<button id="copy">Copy JSON</button>
+			<button id="dl">Download .json</button>
+			<button id="refresh">Re-export</button>
+		</div>
+
+		<div class="hint">
+			<b>Launch</b> opens Fig Smash in your browser with the frame pre-loaded
+			&mdash; no copy-paste needed.<br />
+			<b>Copy / Download</b> gives you the full image export for higher visual
+			fidelity.
+		</div>
+		<div
+			id="dbg"
+			style="
+				font-family: ui-monospace, Menlo, monospace;
+				font-size: 9px;
+				color: #aaa;
+				margin-top: 8px;
+				word-break: break-all;
+				line-height: 1.5;
+			"
+		></div>
+		<script>
+			var out = document.getElementById('out');
+			// NB: must NOT be named `status` — that aliases window.status, which
+			// coerces to a string and breaks every .textContent/.style access.
+			var statusEl = document.getElementById('status');
+			var warn = document.getElementById('warn');
+			var launchBtn = document.getElementById('launch');
+			var appUrlInput = document.getElementById('appurl');
+			var dbg = document.getElementById('dbg');
+			var current = null, currentEncoded = null;
+
+			// Figma's plugin UI runs in a sandboxed null-origin iframe where
+			// localStorage access throws — guard every call so it can't kill the script.
+			function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+			function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+			var savedUrl = lsGet('figsmash.appurl');
+			if (savedUrl) appUrlInput.value = savedUrl;
+			appUrlInput.addEventListener('change', function () {
+			  lsSet('figsmash.appurl', appUrlInput.value.trim());
+			});
+
+			onmessage = function (e) {
+			  var msg = e.data.pluginMessage; if (!msg) return;
+			  if (typeof msg.debug === 'string') dbg.textContent = msg.debug;
+			  if (msg.type === 'frame') {
+			    current = msg.payload;
+			    currentEncoded = msg.urlEncoded || null;
+			    out.value = JSON.stringify(msg.payload);
+			    var count = msg.payload.nodes.length;
+			    statusEl.textContent = count + ' layer' + (count === 1 ? '' : 's') + ' from "' + msg.payload.name + '" — ready';
+			    statusEl.style.color = '#1db954';
+			    warn.style.display = count >= 40 ? '' : 'none';
+			    launchBtn.disabled = !currentEncoded;
+			    if (!currentEncoded && msg.urlError) {
+			      statusEl.textContent += ' (launch unavailable: ' + msg.urlError + ')';
+			    }
+			  } else if (msg.type === 'status') {
+			    statusEl.textContent = msg.msg; statusEl.style.color = '#0d6efd';
+			    launchBtn.disabled = true; warn.style.display = 'none';
+			  } else if (msg.type === 'error') {
+			    current = null; currentEncoded = null; out.value = '';
+			    statusEl.textContent = msg.msg; statusEl.style.color = '#d9534f';
+			    launchBtn.disabled = true; warn.style.display = 'none';
+			  }
+			};
+
+			launchBtn.onclick = function () {
+			  if (!currentEncoded) return;
+			  var base = appUrlInput.value.trim().replace(/\/$/, '');
+			  var url = base + '/#figsmash=' + currentEncoded;
+			  parent.postMessage({ pluginMessage: { type: 'launch', url: url } }, '*');
+			  statusEl.textContent = 'Launched — check your browser!';
+			  statusEl.style.color = '#0d99ff';
+			};
+
+			document.getElementById('refresh').onclick = function () {
+			  parent.postMessage({ pluginMessage: { type: 'refresh' } }, '*');
+			};
+			document.getElementById('copy').onclick = function () {
+			  if (!out.value) return; out.select(); document.execCommand('copy');
+			  statusEl.textContent = 'Copied! Paste it into Fig Smash.'; statusEl.style.color = '#0d6efd';
+			};
+			document.getElementById('dl').onclick = function () {
+			  if (!current) return;
+			  var blob = new Blob([out.value], { type: 'application/json' });
+			  var a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+			  a.download = (current.name || 'frame').replace(/[^a-z0-9_-]+/gi, '_') + '.figsmash.json';
+			  a.click();
+			};
+		</script>
+	</body>
+</html>
