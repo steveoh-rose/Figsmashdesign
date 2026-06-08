@@ -1,0 +1,250 @@
+/* ===========================================================================
+   RIP Designs — The Catharsis Garden
+   A hand-drawn, bullet-journal aesthetic layered over the Smash Arena: deep
+   indigo "sky", eggshell paper panels, single-weight blue line-art, dotted
+   graph matrix. Intentionally rejects the cold enterprise design-tool look.
+   =========================================================================== */
+@import url('https://fonts.googleapis.com/css2?family=Caveat:wght@500;600;700&family=Nunito:wght@400;600;700;800&display=swap');
+
+:root {
+  --rip-indigo: #2f2fe6;
+  --rip-indigo-deep: #1a1a9e;
+  --rip-indigo-night: #14146b;
+  --rip-paper: #f5f1e8;
+  --rip-paper-edge: #e7e1d2;
+  --rip-ink: #2e2ec9;
+  --rip-ink-soft: rgba(46, 46, 201, 0.55);
+  --rip-ink-faint: rgba(46, 46, 201, 0.16);
+  --rip-script: 'Caveat', 'Comic Sans MS', cursive;
+  --rip-hand: 'Nunito', -apple-system, sans-serif;
+}
+
+/* ---- shared bits -------------------------------------------------------- */
+.rip-swatches { display: flex; gap: 6px; }
+.rip-swatch {
+  width: 18px; height: 18px; border-radius: 5px;
+  border: 1.5px solid rgba(0, 0, 0, 0.14);
+  box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, 0.35);
+}
+
+.rip-btn {
+  font-family: var(--rip-hand); font-weight: 700; font-size: 14px;
+  padding: 10px 18px; border-radius: 999px; cursor: pointer;
+  border: 2px solid var(--rip-ink); background: transparent; color: var(--rip-ink);
+  transition: transform 0.12s ease, background 0.15s ease, color 0.15s ease;
+}
+.rip-btn:hover { transform: translateY(-1px); }
+.rip-btn.prim { background: var(--rip-ink); color: var(--rip-paper); }
+.rip-btn.prim:hover { background: var(--rip-indigo-deep); border-color: var(--rip-indigo-deep); }
+.rip-btn.ghost { border-color: var(--rip-ink-soft); color: var(--rip-ink-soft); }
+.rip-btn.ghost:hover { color: var(--rip-ink); border-color: var(--rip-ink); }
+.rip-btn.on-dark { border-color: rgba(255, 255, 255, 0.5); color: rgba(255, 255, 255, 0.85); }
+.rip-btn.on-dark:hover { color: #fff; border-color: #fff; }
+
+.rip-eulogy-input {
+  width: 100%; min-height: 84px; resize: none;
+  font-family: var(--rip-hand); font-size: 14px; line-height: 1.5;
+  color: var(--rip-ink); background: rgba(255, 255, 255, 0.5);
+  border: none; border-radius: 12px; padding: 12px 14px; outline: none;
+}
+.rip-eulogy-input::placeholder { color: var(--rip-ink-soft); }
+.rip-eulogy-input.on-dark {
+  background: rgba(255, 255, 255, 0.08); color: #fff;
+  box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, 0.25);
+}
+.rip-eulogy-input.on-dark::placeholder { color: rgba(255, 255, 255, 0.45); }
+
+/* ---- floating "open garden" button ------------------------------------- */
+.rip-open-garden {
+  position: fixed; left: 20px; bottom: 20px; z-index: 30;
+  display: flex; align-items: center; gap: 6px;
+  font-family: var(--rip-hand); font-weight: 800; font-size: 13px;
+  padding: 9px 14px; border-radius: 999px; cursor: pointer;
+  color: var(--rip-ink); background: var(--rip-paper);
+  border: 2px solid var(--rip-ink);
+  box-shadow: 0 8px 22px rgba(20, 20, 107, 0.4);
+}
+.rip-open-garden:hover { transform: translateY(-2px); }
+.rip-open-count {
+  min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px;
+  background: var(--rip-ink); color: var(--rip-paper);
+  font-size: 11px; display: inline-flex; align-items: center; justify-content: center;
+}
+
+/* ---- The Rebirth Bloom -------------------------------------------------- */
+.rip-bloom {
+  position: fixed; inset: 0; z-index: 70;
+  display: flex; align-items: center; justify-content: center;
+  background: radial-gradient(120% 90% at 50% 10%, var(--rip-indigo) 0%, var(--rip-indigo-deep) 45%, var(--rip-indigo-night) 100%);
+  animation: rip-fade 0.6s ease-out;
+}
+.rip-bloom-sky {
+  position: absolute; inset: 0; pointer-events: none; opacity: 0.5;
+  background-image: radial-gradient(rgba(255, 255, 255, 0.7) 1px, transparent 1.4px);
+  background-size: 26px 26px;
+  animation: rip-drift 14s linear infinite;
+}
+.rip-bloom-inner {
+  position: relative; width: min(440px, 92vw);
+  display: flex; flex-direction: column; align-items: center; text-align: center; gap: 14px;
+  color: #fff;
+}
+.rip-bloom-kicker {
+  font-family: var(--rip-hand); font-size: 11px; letter-spacing: 0.22em;
+  text-transform: uppercase; color: rgba(255, 255, 255, 0.6);
+}
+.rip-bloom-title {
+  font-family: var(--rip-script); font-size: 52px; font-weight: 700;
+  line-height: 0.9; margin: 0; color: #fff;
+}
+.rip-bloom-stage {
+  position: relative; width: 100%; height: 170px;
+  display: flex; align-items: flex-end; justify-content: center;
+}
+.rip-bloom-soil {
+  position: absolute; bottom: 24px; width: 180px; height: 14px; border-radius: 50%;
+  background: rgba(0, 0, 0, 0.25); filter: blur(4px);
+}
+.rip-bloom-grow { transform-origin: bottom center; animation: rip-grow 1.1s cubic-bezier(0.2, 0.9, 0.25, 1.1) both; }
+.rip-bloom-grow svg { filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.3)); }
+.rip-bloom-grow svg path,
+.rip-bloom-grow svg ellipse,
+.rip-bloom-grow svg circle { stroke: #fff !important; }
+.rip-bloom-dna {
+  display: flex; align-items: center; gap: 10px;
+  font-family: var(--rip-hand); font-size: 12px; color: rgba(255, 255, 255, 0.75);
+}
+.rip-bloom-scale { font-style: italic; }
+.rip-bloom-fname {
+  width: 100%; text-align: center;
+  font-family: var(--rip-hand); font-weight: 700; font-size: 15px; color: #fff;
+  background: transparent; border: none; border-bottom: 1.5px dashed rgba(255, 255, 255, 0.4);
+  padding: 4px 0; outline: none;
+}
+.rip-bloom-fname:focus { border-bottom-color: #fff; }
+.rip-bloom-btns { display: flex; gap: 10px; margin-top: 4px; }
+
+/* ---- The Persistent Graveyard Grid ------------------------------------- */
+.rip-garden {
+  position: fixed; inset: 0; z-index: 60; display: none;
+  align-items: center; justify-content: center;
+  background: radial-gradient(130% 100% at 50% 0%, var(--rip-indigo) 0%, var(--rip-indigo-deep) 55%, var(--rip-indigo-night) 100%);
+}
+.rip-garden.show { display: flex; animation: rip-fade 0.3s ease-out; }
+.rip-garden-paper {
+  position: relative; width: min(880px, 94vw); max-height: 92vh; overflow: auto;
+  background: var(--rip-paper);
+  border-radius: 26px; padding: 30px 34px 26px;
+  box-shadow: 0 40px 90px rgba(10, 10, 60, 0.55), inset 0 0 0 1px var(--rip-paper-edge);
+}
+.rip-garden-head { text-align: center; margin-bottom: 18px; }
+.rip-garden-head h1 {
+  font-family: var(--rip-script); font-weight: 700; font-size: 46px;
+  color: var(--rip-ink); margin: 0; line-height: 0.9;
+}
+.rip-garden-head p { font-family: var(--rip-hand); font-size: 13px; color: var(--rip-ink-soft); margin-top: 4px; }
+
+.rip-grid {
+  display: grid;
+  grid-template-columns: repeat(var(--cols), 1fr);
+  grid-template-rows: repeat(var(--rows), minmax(84px, 96px));
+  gap: 0;
+  background-image: radial-gradient(var(--rip-ink-faint) 1.5px, transparent 1.8px);
+  background-size: calc(100% / var(--cols)) calc(100% / var(--rows));
+  background-position: center;
+  border-radius: 14px;
+  padding: 6px;
+}
+.rip-plot {
+  position: relative;
+  display: flex; align-items: flex-end; justify-content: center;
+}
+.rip-dot { position: absolute; bottom: 14px; width: 5px; height: 5px; border-radius: 50%; background: var(--rip-ink-faint); }
+.rip-plant {
+  position: relative; background: none; border: none; cursor: pointer; padding: 0;
+  display: flex; align-items: flex-end; justify-content: center;
+  transition: transform 0.18s ease;
+}
+.rip-plant:hover { transform: translateY(-3px) scale(1.05); }
+.rip-plant svg { filter: drop-shadow(0 4px 6px rgba(46, 46, 201, 0.18)); }
+
+.rip-ghost-pop {
+  position: absolute; bottom: calc(100% - 6px); left: 50%; transform: translateX(-50%);
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  padding: 8px; border-radius: 12px; pointer-events: none; z-index: 5;
+  background: rgba(20, 20, 107, 0.92);
+  box-shadow: 0 14px 30px rgba(10, 10, 60, 0.5);
+  animation: rip-pop 0.16s ease-out;
+}
+.rip-ghost-pop svg { filter: drop-shadow(0 0 6px rgba(120, 160, 255, 0.6)); }
+.rip-ghost-pop em {
+  font-family: var(--rip-hand); font-style: normal; font-size: 11px;
+  color: rgba(255, 255, 255, 0.85); max-width: 120px; text-align: center;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+.rip-garden-foot {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-top: 18px; gap: 14px; flex-wrap: wrap;
+}
+.rip-garden-stats { font-family: var(--rip-hand); font-size: 13px; color: var(--rip-ink-soft); }
+.rip-garden-stats b { color: var(--rip-ink); }
+.rip-garden-actions { display: flex; gap: 10px; }
+.rip-garden-empty {
+  position: absolute; left: 50%; top: 56%; transform: translate(-50%, -50%);
+  width: 70%; text-align: center; font-family: var(--rip-hand); font-size: 14px;
+  color: var(--rip-ink-soft); pointer-events: none;
+}
+
+/* ---- Tombstone Eulogy card (phone mockup) ------------------------------ */
+.rip-modal {
+  position: fixed; inset: 0; z-index: 80;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(12, 12, 60, 0.62); backdrop-filter: blur(4px);
+  animation: rip-fade 0.2s ease-out;
+}
+.rip-phone {
+  width: min(330px, 90vw);
+  display: flex; flex-direction: column; align-items: center; gap: 12px;
+  background: var(--rip-paper);
+  border-radius: 30px; padding: 22px 22px 20px;
+  box-shadow: 0 36px 80px rgba(10, 10, 60, 0.6), inset 0 0 0 1px var(--rip-paper-edge);
+  animation: rip-pop 0.22s cubic-bezier(0.2, 0.9, 0.25, 1.1);
+}
+.rip-phone-notch { width: 64px; height: 6px; border-radius: 999px; background: var(--rip-ink-faint); }
+.rip-phone-preview {
+  position: relative; width: 100%; height: 150px; border-radius: 16px;
+  background: rgba(255, 255, 255, 0.55);
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: inset 0 0 0 1.5px var(--rip-paper-edge);
+}
+.rip-preview-ghost { opacity: 0.9; }
+.rip-preview-plant { position: absolute; right: 12px; bottom: 8px; }
+.rip-phone-name {
+  font-family: var(--rip-hand); font-weight: 800; font-size: 14px; color: var(--rip-ink);
+  max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.rip-phone-meta {
+  display: flex; justify-content: space-between; width: 100%;
+  font-family: var(--rip-hand); font-size: 11px; color: var(--rip-ink-soft);
+}
+.rip-eulogy-label {
+  align-self: flex-start; font-family: var(--rip-script); font-size: 20px;
+  color: var(--rip-ink); line-height: 1;
+}
+.rip-phone-btns { display: flex; gap: 10px; width: 100%; }
+.rip-phone-btns .rip-btn { flex: 1; }
+
+/* ---- keyframes ---------------------------------------------------------- */
+@keyframes rip-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes rip-pop { from { opacity: 0; transform: translateY(6px) scale(0.96); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes rip-grow {
+  0% { transform: scaleY(0) scaleX(0.4); opacity: 0; }
+  60% { opacity: 1; }
+  100% { transform: scaleY(1) scaleX(1); opacity: 1; }
+}
+@keyframes rip-drift { from { background-position: 0 0; } to { background-position: 0 26px; } }
+
+/* The eulogy card pop animation collides with translateX centering inside the
+   ghost popover; keep the popover's own transform intact. */
+.rip-ghost-pop { transform: translateX(-50%); }

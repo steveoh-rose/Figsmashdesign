@@ -620,8 +620,26 @@ document.getElementById('impclip').addEventListener('click',function(){ if(navig
 // ---- win state (first to 5 stocks) ----
 function resetFighters(){ for(const f of fighters){ f.dead=false; f.x=f.home.x; f.y=f.home.y; f.tx=f.x; f.ty=f.y; f.vx=f.vy=0; f.dmg=0; f.hitTimer=0; f.scaleTarget=1; f.scaleAmt=1; f.invinc=0; f.gun=0; f.gunCd=0; f.starCd=0; f.dash=null; f.charging=-1; f.charged=-1; f.stun=0; f.respawn=0; f.spawnGuard=0; if(f.held){f.held.held=false;f.held=null;} } }
 function clearArena(){ debris.length=0; bladePts.length=0; bolts.length=0; specials.length=0; fireZones.length=0; drops.length=0; slicing=false; shapeBox=null; }
+// Capture the destroyed design's data signature so the React "Rebirth Bloom"
+// can grow a plant whose colours + complexity are inherited from this battle.
+function captureBattleDNA(){
+  const f=customFrame; let fileName, layerCount, palette=[];
+  if(f && f.nodes && f.nodes.length){
+    fileName=f.name; layerCount=f.nodes.length;
+    for(const n of f.nodes){ if(n.fill && palette.indexOf(n.fill)<0){ palette.push(n.fill); if(palette.length>=3) break; } }
+  } else {
+    fileName=((currentMap&&currentMap.name)||'Untitled')+'_v'+(1+(Math.random()*8|0))+'_FINAL_client_edits.fig';
+    layerCount=props?props.length:0;
+    if(currentMap&&currentMap.accent) palette.push(currentMap.accent);
+  }
+  const fill=['#0052CC','#FF5630','#F4F5F7'];
+  while(palette.length<3) palette.push(fill[palette.length]);
+  return { fileName, layerCount, colorPalette: palette };
+}
 function showWinScreen(){ winnerPending=false; matchOver=true; const youWin=scoreYou>=STOCKS_TO_WIN; const t=document.getElementById('winresult'); t.textContent=youWin?'YOU WIN!':'CPU WINS'; t.style.color=youWin?'#0d99ff':'#ff4d97';
   document.getElementById('winscore').innerHTML='<span style="color:#0d99ff">'+scoreYou+'</span> &nbsp;—&nbsp; <span style="color:#ff4d97">'+scoreCpu+'</span>';
+  try{ window.__ripBattleDNA=captureBattleDNA(); }catch(e){}
+  const gbtn=document.getElementById('wingarden'); if(gbtn) gbtn.style.display=youWin?'':'none';
   document.getElementById('winscreen').classList.add('show'); sndWin(); }
 function rematch(){ document.getElementById('winscreen').classList.remove('show'); matchOver=false; winnerPending=false; scoreYou=scoreCpu=0; resetFighters(); clearArena(); spawnProps(); countdown=3.0; countShown=-1; sndTool(); }
 function winToCharSelect(){ document.getElementById('winscreen').classList.remove('show'); matchOver=false; winnerPending=false; scoreYou=scoreCpu=0; resetFighters(); clearArena(); spawnProps(); openCharSelect(); }
