@@ -127,6 +127,9 @@ let currentDesign=null;     // mirror used by captureBattleDNA after a match
 // The design has health. It starts at 100% and the AI ("Heartless Client")
 // chips it away by smashing tiles. If it hits 0% you lose; KO the client to win.
 let designHP=100, designTileTotal=12, designAtkCd=2.5;
+const SABOTAGE_RANGE=360;   // if you back off past this, the client runs at the design
+const RIP_KO_TARGET=3;      // KOs of the client needed to win
+const RIP_KO_CHUNK=12;      // design % the client smashes each time it KOs you
 function buildImageStage(img, name){ props=[];
   const cols=4, rows=3, fw=img.naturalWidth||img.width||4, fh=img.naturalHeight||img.height||3;
   const stageW=Math.min(W*0.6, 700), scale=stageW/fw, stageH=fh*scale;
@@ -255,6 +258,8 @@ function aiThink(dt){ if(cpu.respawn>0||cpu.stun>0||cpu.dash) return;
   if(lvl.canDodge && b.dodgeCd<=0){ for(const o of props){ if(o.held||o.owner!==player||o.grace>0)continue; const sp=Math.hypot(o.vx,o.vy); if(sp<260)continue; const dx=cpu.x-o.x,dy=cpu.y-o.y,d=Math.hypot(dx,dy); if(d<200&&(o.vx*dx+o.vy*dy)>0){ const perp=(o.vx*dy-o.vy*dx)>0?1:-1; b.tgx=cpu.x+(-o.vy)/sp*220*perp; b.tgy=cpu.y+(o.vx)/sp*220*perp; b.state='dodge'; b.dodgeCd=0.5; b.cd=0.18; return; } } }
   if(b.cd>0) return; b.cd=T.aiReaction*(0.8+Math.random()*0.5);
   const dP=Math.hypot(player.x-cpu.x,player.y-cpu.y); const standoff=300-T.aiAggro*120; b.standoff=standoff;
+  // RIP: when you're not pressuring it (far away or KO'd), the client breaks off and goes for the design.
+  if(_ripDriven && cpu.dmg<=92){ const tile=designTarget(); if(tile && (player.respawn>0 || dP>SABOTAGE_RANGE)){ b.state='sabotage'; b._tile=tile; b.tgx=tile.x; b.tgy=tile.y; return; } }
   if(cpu.dmg>92) b.state='flee'; else if(lvl.canPunch&&dP<PUNCH_RANGE+10&&cpu.punchCd<=0) b.state='punch'; else if(lvl.canThrow&&cpu.held) b.state='throw'; else if(player.dmg>70+(1-T.aiAggro)*25) b.state='pressure'; else b.state='seek';
   if(b.state==='flee'){ const a=Math.atan2(cpu.y-player.y,cpu.x-player.x); b.tgx=clamp(cpu.x+Math.cos(a)*260,60,W-60); b.tgy=clamp(cpu.y+Math.sin(a)*260,60,H-60); }
   else if(b.state==='pressure'){ b.tgx=player.x; b.tgy=player.y; }
@@ -263,10 +268,13 @@ function aiThink(dt){ if(cpu.respawn>0||cpu.stun>0||cpu.dash) return;
   if(b.state==='seek' && drops.length && !cpu.invinc && !(cpu.gun>0)){ const d=nearestDrop(cpu); if(d && Math.hypot(d.x-cpu.x,d.y-cpu.y)<460){ b.tgx=d.x; b.tgy=d.y; b._t=null; } }
 }
 function aiAct(dt){ if(cpu.respawn>0||cpu.stun>0||cpu.dash) return;
-  if(_ripDriven) ripAttackDesign(dt);   // the client chips away at the design on a timer
-  if(lvl.canPunch && cpu.char&&cpu.char.ability && (cpu.specialCd||0)<=0 && Math.random()<dt*0.7 && Math.hypot(player.x-cpu.x,player.y-cpu.y)<640){ if(cpu.char.ability==='energy'){ fireEnergy(cpu,0.6+Math.random()*0.6); cpu.specialCd=1.3; } else useSpecial(cpu); }
   const b=cpu.brain; cpu.tx=b.tgx!=null?b.tgx:cpu.x; cpu.ty=b.tgy!=null?b.tgy:cpu.y;
-  if(lvl.driftOnly){ const t=_ripDriven?designTarget():null; cpu.tx=t?t.x:player.x; cpu.ty=t?t.y:player.y; return; }   // dumb client: just drifts at the design
+  // RIP sabotage: run to the design and smash a tile when adjacent.
+  if(_ripDriven && b.state==='sabotage'){ let o=b._tile; if(!o||props.indexOf(o)<0) o=b._tile=designTarget();
+    if(o){ cpu.tx=o.x; cpu.ty=o.y; if(Math.hypot(o.x-cpu.x,o.y-cpu.y) < (o.w||40)/2+46){ b.sabCd=(b.sabCd||0)-dt; if(b.sabCd<=0){ smashDesignTile(o); b.sabCd=(lvl.designRate||3)*(0.7+Math.random()*0.5); b._tile=designTarget(); } } }
+    return; }
+  if(lvl.canPunch && cpu.char&&cpu.char.ability && (cpu.specialCd||0)<=0 && Math.random()<dt*0.7 && Math.hypot(player.x-cpu.x,player.y-cpu.y)<640){ if(cpu.char.ability==='energy'){ fireEnergy(cpu,0.6+Math.random()*0.6); cpu.specialCd=1.3; } else useSpecial(cpu); }
+  if(lvl.driftOnly){ cpu.tx=player.x; cpu.ty=player.y; return; }
   const menu = overTool||overPanel;                                 // truce while you're picking a tool / in settings
   if(lvl.canThrow && b.state==='seek'&&!cpu.held){ const o=b._t; if(o&&!o.held&&Math.hypot(o.x-cpu.x,o.y-cpu.y)<GRAB_RANGE+10){ grab(cpu,o); const i=props.indexOf(o); if(i>=0){props.splice(i,1);props.push(o);} b.state='throw'; } }
   if(lvl.canThrow && b.state==='throw'&&cpu.held && !menu){ const dist=Math.hypot(player.x-cpu.x,player.y-cpu.y); if(dist<b.standoff+60){ b.wind+=dt; if(b.wind>lvl.wind){ const lead=lvl.leadAim?0.18:0, tx=player.x+player.vx*lead, ty=player.y+player.vy*lead; const a=Math.atan2(ty-cpu.y,tx-cpu.x)+(Math.random()-0.5)*T.aiJitter*2; throwAt(cpu,cpu.held,cpu.x+Math.cos(a)*400,cpu.y+Math.sin(a)*400,1100); b.wind=0; } } else b.wind=0; } else b.wind=0;
@@ -339,12 +347,14 @@ function physics(dt){
   whiteFlash=Math.max(0,whiteFlash-dt*3); koBanner=Math.max(0,koBanner-dt);
 }
 function ko(f){ if(f.respawn>0||matchOver||winnerPending) return;
-  const ripWin = _ripDriven && !f.isPlayer;   // KO the client → you win and the design survives
-  if(f.isPlayer){ scoreCpu++; koTxt=_ripDriven?'YOU FELL — RESPAWNING':'LOST A STOCK'; if(!_ripDriven)setTaunt(cpu);} else { scoreYou++; koTxt=_ripDriven?'CLIENT DOWN!':'K.O.'; }
+  const clientKO = _ripDriven && !f.isPlayer;
+  if(f.isPlayer){ scoreCpu++; koTxt=_ripDriven?'YOU FELL':'LOST A STOCK'; if(!_ripDriven)setTaunt(cpu);} else { scoreYou++; koTxt=_ripDriven?('CLIENT KO  '+scoreYou+'/'+RIP_KO_TARGET):'K.O.'; }
   koBanner=1.0; whiteFlash=0.55; hitstop=0.18; addShake(0.95); timeScale=0.18; sndKO(); spark(clamp(f.x,20,W-20),clamp(f.y,20,H-20),f.vx,f.vy,18);
   if(f.held){f.held.held=false;f.held=null;}
   f.dmg=0;f.hitTimer=0;f.scaleTarget=1;f.scaleAmt=1;f.invinc=0;f.gun=0;f.gunCd=0;f.starCd=0;f.dash=null;f.charging=-1;f.stun=0;f.specialCd=0;f.charged=-1;
-  if(ripWin){ winnerPending=true; f.dead=true; f.vx=f.vy=0; setTimeout(()=>ripEnd(true),1400); return; }   // single KO ends it in RIP mode
+  // RIP: KO the client RIP_KO_TARGET times to win; if it KOs you it gets a free shot at the design.
+  if(clientKO && scoreYou>=RIP_KO_TARGET){ winnerPending=true; f.dead=true; f.vx=f.vy=0; setTimeout(()=>ripEnd(true),1400); return; }
+  if(_ripDriven && f.isPlayer){ designHP=Math.max(0,designHP-RIP_KO_CHUNK); pop(W/2,120,'design −'+RIP_KO_CHUNK+'%','#ff4d6d'); if(designHP<=0){ winnerPending=true; f.dead=true; f.vx=f.vy=0; setTimeout(()=>ripEnd(false),1200); return; } }
   if(!_ripDriven && (scoreYou>=STOCKS_TO_WIN||scoreCpu>=STOCKS_TO_WIN)){ winnerPending=true; f.dead=true; f.vx=f.vy=0; setTimeout(showWinScreen,1400); return; }   // legacy: out for good on the 5th
   f.respawn=RESPAWN_TIME; f.spawnGuard=0; f.x=f.home.x; f.y=-50; f.vx=f.vy=0; f.tx=f.x; f.ty=f.y; f.brain.state='seek'; }
 function triggerForceQuit(target){

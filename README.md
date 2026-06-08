@@ -1,25 +1,28 @@
 
-  # RIP Designs — The Catharsis Garden
+  # FigConsole 67 — The Stakeholder Waiting Room
 
-  Design burnout, turned into a ritual. **RIP Designs** (formerly FigSmash) lets
-  designers violently purge a killed Figma file in a Super Smash–style combat
-  sequence against "The Heartless Client," then watch the structural debris bloom
-  into a hand-drawn Zen garden they can archive and eulogize.
+  The lowest-productivity hours of a designer's week are spent *waiting for
+  feedback*. **FigConsole 67** is a fictional 8-bit retro arcade console you boot
+  inside Figma while a stakeholder reviews your file — swap in a cartridge, rack
+  up a high score, and turn dead time into "Time Saved While Waiting".
 
-  ## The loop
+  ## The console
 
-  1. **The Smash Arena** — the imported frame's layers become the combat stage.
-     Defeat the AI client and the layer integrity hits 0%.
-  2. **The Rebirth Bloom** — the destroyed frame's data signature (colour palette +
-     layer volume) grows a custom botanical doodle. Name it, eulogize it, plant it.
-  3. **The Persistent Graveyard Grid** — every purged design occupies a coordinate on
-     a dotted matrix. Hover a plant for a glowing ghost blueprint of the dead layout.
-  4. **Tombstone Eulogies** — click a plant to open its post-mortem card and read or
-     edit why the file was killed.
+  A vintage "Game Creator Pro" desktop (eggplant frames, gold buttons, slate
+  desktop, Press Start 2P type). Pick a cartridge and watch it slide into the
+  slot, boot, and load:
 
-  Garden state persists via `localStorage` (the sandbox stand-in for Figma's
-  `figma.clientStorage`) using the schema in [the PRD](plans/) — see
-  `src/app/garden/`.
+  - **FigSmash** (Brawler) — KO *The Unaligned Stakeholder*. Reuses the pixel
+    Smash-arena engine; a win flashes `FILE APPROVED!`.
+  - **FigHero** (Rhythm) — a 4-lane shortcut drill. Figma tool icons (V/P/T/R)
+    drop to an 8-bit beat; hit the matching key on the strike line. Combos
+    multiply the score, misses fire a bit-crushed buzzer.
+  - **FigContrast** (Calibrate) — a downscaled pixel scene is thrown out of
+    whack; dial the BRIGHT / SATUR / HUE sliders to match the target. Closer +
+    faster = bigger score.
+
+  High scores and the Time Saved counter persist via `localStorage`. Source lives
+  in `src/app/console/`.
 
   ## Running the code
 

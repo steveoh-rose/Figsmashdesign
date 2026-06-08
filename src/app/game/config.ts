@@ -52,7 +52,7 @@ export const T = {
 };
 
 export const LEVELS: Level[] = [
-  { id: 'ollama', short: 'ollama', desc: 'barely tries. slow, clumsy, easy to KO.', reaction: 1.40, jitter: 0.70, aggro: 0.00, speedCap: 150, driftOnly: true,  canThrow: false, canDodge: false, canPunch: false, leadAim: false, wind: 0.50, designRate: 5.0 },
+  { id: 'ollama', short: 'ollama', desc: 'slow & clumsy. lazy punches, easy to KO.',  reaction: 0.95, jitter: 0.55, aggro: 0.12, speedCap: 360, driftOnly: false, canThrow: false, canDodge: false, canPunch: true,  leadAim: false, wind: 0.50, designRate: 4.2 },
   { id: 'haiku',  short: 'haiku',  desc: 'fast reflexes, shallow tactics.',       reaction: 0.42, jitter: 0.30, aggro: 0.30, speedCap: 540, driftOnly: false, canThrow: true,  canDodge: false, canPunch: true,  leadAim: false, wind: 0.42, designRate: 2.8 },
   { id: 'sonnet', short: 'sonnet', desc: 'sharp all-rounder. reads your throws.', reaction: 0.26, jitter: 0.14, aggro: 0.55, speedCap: 660, driftOnly: false, canThrow: true,  canDodge: true,  canPunch: true,  leadAim: true,  wind: 0.30, designRate: 1.8 },
   { id: 'opus',   short: 'opus',   desc: 'relentless, precise, leads your moves.', reaction: 0.14, jitter: 0.05, aggro: 0.85, speedCap: 780, driftOnly: false, canThrow: true,  canDodge: true,  canPunch: true,  leadAim: true,  wind: 0.22, designRate: 1.1 },

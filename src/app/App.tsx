@@ -13,7 +13,7 @@ import { MapSelect } from './components/screens/MapSelect';
 import { ImportDialog } from './components/screens/ImportDialog';
 import { WinScreen } from './components/screens/WinScreen';
 import { PauseMenu } from './components/screens/PauseMenu';
-import { RipShell } from './components/RipShell';
+import { FigConsole } from './console/FigConsole';
 import './garden/garden.css';
 import './garden/shell.css';
 import './garden/pixel.css';
@@ -38,7 +38,7 @@ export default function App() {
       <PauseMenu />
       <FigmaChrome />
       <CharacterArtMounts />
-      <RipShell />
+      <FigConsole />
     </>
   );
 }

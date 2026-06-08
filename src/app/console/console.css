@@ -1,0 +1,221 @@
+/* ===========================================================================
+   FigConsole 67 — 8-bit retro OS. Eggplant frames, gold buttons, slate desktop.
+   Press Start 2P chrome, Pixelify Sans body. Hard pixels, no anti-alias vibe.
+   =========================================================================== */
+:root {
+  --fc-slate: #51516a;
+  --fc-slate-d: #3c3c52;
+  --fc-egg: #3d2350;
+  --fc-egg-d: #2b1740;
+  --fc-egg-l: #5a3a72;
+  --fc-gold: #e7b53c;
+  --fc-gold-d: #b9871f;
+  --fc-screen: #14142a;
+  --fc-screen-l: #1d1d3a;
+  --fc-text: #f3edc8;
+  --fc-dim: #9a93b8;
+  --fc-pix: 'Press Start 2P', monospace;
+  --fc-body: 'Pixelify Sans', monospace;
+}
+
+.fc-root {
+  position: fixed; inset: 0; z-index: 200;
+  display: flex; align-items: center; justify-content: center;
+  background:
+    repeating-linear-gradient(0deg, rgba(0,0,0,0.06) 0 2px, transparent 2px 4px),
+    linear-gradient(160deg, var(--fc-slate) 0%, var(--fc-slate-d) 100%);
+  font-family: var(--fc-body); color: var(--fc-text);
+  image-rendering: pixelated;
+}
+.fc-root *, .fc-smashbar { font-family: var(--fc-body); }
+
+/* ---- window ------------------------------------------------------------- */
+.fc-window {
+  width: min(920px, 96vw); height: min(640px, 94vh);
+  display: flex; flex-direction: column;
+  background: var(--fc-egg); border: 4px solid var(--fc-egg-d);
+  box-shadow: 0 0 0 4px var(--fc-gold-d), 8px 8px 0 rgba(0,0,0,0.45);
+}
+.fc-titlebar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 9px 12px; background: var(--fc-egg-d); border-bottom: 3px solid var(--fc-gold-d);
+}
+.fc-title, .fc-clock { font-family: var(--fc-pix); font-size: 10px; color: var(--fc-gold); }
+.fc-clock { color: var(--fc-text); }
+
+.fc-menubar {
+  display: flex; align-items: center; gap: 10px; padding: 8px 12px;
+  background: var(--fc-egg-l); border-bottom: 3px solid var(--fc-egg-d);
+  font-family: var(--fc-pix); font-size: 9px;
+}
+.fc-menu-exe, .fc-menu-edit { color: var(--fc-text); opacity: 0.85; }
+.fc-menu-run {
+  font-family: var(--fc-pix); font-size: 9px; cursor: pointer;
+  background: var(--fc-gold); color: #2b1740; border: none;
+  padding: 6px 10px; box-shadow: 2px 2px 0 var(--fc-gold-d);
+}
+.fc-menu-run:active { transform: translate(2px,2px); box-shadow: none; }
+.fc-menu-spacer { flex: 1; }
+.fc-saved { font-size: 9px; color: var(--fc-text); }
+.fc-saved b { color: var(--fc-gold); }
+
+.fc-body { flex: 1; position: relative; background: var(--fc-screen); overflow: hidden; }
+
+.fc-statusbar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 6px 12px; background: var(--fc-egg-d); border-top: 3px solid var(--fc-gold-d);
+  font-family: var(--fc-pix); font-size: 8px; color: var(--fc-dim);
+}
+
+/* ---- desktop ------------------------------------------------------------ */
+.fc-desktop { display: flex; height: 100%; gap: 0; }
+.fc-carts {
+  flex: 1; display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  grid-auto-rows: min-content; gap: 16px; padding: 22px; align-content: start;
+}
+.fc-cart {
+  display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: pointer;
+  background: var(--fc-screen-l); color: var(--fc-text);
+  border: 3px solid #000; box-shadow: 4px 4px 0 rgba(0,0,0,0.5); padding: 12px 10px 10px;
+  position: relative;
+}
+.fc-cart::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 6px; background: var(--cc); }
+.fc-cart:hover { transform: translate(-1px,-1px); }
+.fc-cart.sel { border-color: var(--fc-gold); box-shadow: 4px 4px 0 var(--fc-gold-d); }
+.fc-cart-art { width: 72px; height: 72px; display: block; margin-top: 4px; }
+.fc-cartpix { width: 100%; height: 100%; image-rendering: pixelated; }
+.fc-cart-name { font-family: var(--fc-pix); font-size: 10px; }
+.fc-cart-tag { font-family: var(--fc-pix); font-size: 7px; color: var(--cc); }
+.fc-cart-hi { font-family: var(--fc-pix); font-size: 7px; color: var(--fc-dim); }
+
+.fc-sidebar {
+  width: 188px; flex-shrink: 0; padding: 18px 16px; display: flex; flex-direction: column; gap: 10px;
+  background: var(--fc-egg); border-left: 4px solid var(--fc-egg-d);
+}
+.fc-drive {
+  font-family: var(--fc-pix); font-size: 9px; color: var(--fc-text);
+  background: var(--fc-egg-d); border: 2px solid #000; padding: 9px 10px; box-shadow: 2px 2px 0 rgba(0,0,0,0.4);
+}
+.fc-sidenote { margin-top: auto; border-top: 2px dashed var(--fc-egg-l); padding-top: 12px; }
+.fc-sel-name { font-family: var(--fc-pix); font-size: 10px; color: var(--fc-gold); margin-bottom: 6px; }
+.fc-sel-blurb { font-size: 14px; line-height: 1.3; color: var(--fc-dim); margin-bottom: 12px; }
+
+.fc-btn {
+  font-family: var(--fc-pix); font-size: 9px; cursor: pointer;
+  background: var(--fc-egg-d); color: var(--fc-text); border: 2px solid #000;
+  padding: 9px 12px; box-shadow: 3px 3px 0 rgba(0,0,0,0.5);
+}
+.fc-btn:hover { transform: translate(-1px,-1px); }
+.fc-btn:active { transform: translate(2px,2px); box-shadow: none; }
+.fc-btn-gold { background: var(--fc-gold); color: #2b1740; box-shadow: 3px 3px 0 var(--fc-gold-d); }
+.fc-insert, .fc-ct-lock { width: 100%; }
+
+/* ---- boot / cartridge slide-in ----------------------------------------- */
+.fc-boot {
+  position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 26px;
+  background: radial-gradient(120% 100% at 50% 0%, #1d1d3a, #0c0c1c);
+}
+.fc-slot { position: relative; width: 180px; height: 150px; }
+.fc-cartridge {
+  position: absolute; left: 50%; top: 0; transform: translateX(-50%);
+  width: 120px; height: 110px; background: var(--cc, #b06cd9);
+  border: 4px solid #000; box-shadow: 5px 5px 0 rgba(0,0,0,0.5);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+  animation: fc-insert-cart 1.6s cubic-bezier(0.5, 0, 0.7, 1) forwards;
+}
+.fc-cartridge-label { width: 56px; height: 56px; background: #000; padding: 4px; }
+.fc-cartridge-name { font-family: var(--fc-pix); font-size: 9px; color: #000; }
+.fc-slotmouth {
+  position: absolute; left: 50%; bottom: 6px; transform: translateX(-50%);
+  width: 150px; height: 16px; background: #000; box-shadow: inset 0 4px 0 rgba(255,255,255,0.08);
+}
+@keyframes fc-insert-cart {
+  0% { transform: translate(-50%, -150px); opacity: 0; }
+  35% { opacity: 1; }
+  70% { transform: translate(-50%, 44px); }
+  78% { transform: translate(-50%, 38px); }
+  100% { transform: translate(-50%, 44px); }
+}
+.fc-bootmsg { font-family: var(--fc-pix); font-size: 10px; color: var(--fc-gold); }
+.fc-blink { animation: fc-blink 0.9s steps(1) infinite; }
+@keyframes fc-blink { 50% { opacity: 0; } }
+
+/* ---- results ------------------------------------------------------------ */
+.fc-results {
+  position: fixed; inset: 0; z-index: 210; display: flex; align-items: center; justify-content: center;
+  background: rgba(8,8,20,0.7);
+}
+.fc-results-box {
+  text-align: center; padding: 28px 30px; background: var(--fc-egg);
+  border: 4px solid #000; box-shadow: 0 0 0 4px var(--cc), 8px 8px 0 rgba(0,0,0,0.5);
+}
+.fc-results-title { font-family: var(--fc-pix); font-size: 11px; color: var(--fc-gold); margin-bottom: 16px; }
+.fc-results-score { font-family: var(--fc-pix); font-size: 30px; color: var(--fc-text); letter-spacing: 2px; }
+.fc-results-hi { font-family: var(--fc-pix); font-size: 9px; color: var(--cc); margin-top: 12px; animation: fc-blink 0.6s steps(1) infinite; }
+.fc-approved { font-family: var(--fc-pix); font-size: 16px; color: var(--fc-gold); padding: 6px 0 4px; }
+.fc-results-btns { display: flex; gap: 10px; margin-top: 22px; justify-content: center; }
+
+/* ---- FigSmash boss banner ---------------------------------------------- */
+.fc-smashbar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 205;
+  display: flex; align-items: center; gap: 8px; justify-content: center;
+  padding: 8px 12px; background: var(--fc-egg-d); color: var(--fc-text);
+  font-family: var(--fc-pix); font-size: 9px; border-bottom: 3px solid var(--fc-gold-d);
+}
+.fc-smashbar b { color: var(--fc-red, #ff6a5a); }
+.fc-smashbar button {
+  font-family: var(--fc-pix); font-size: 8px; cursor: pointer; margin-left: 6px;
+  background: var(--fc-gold); color: #2b1740; border: none; padding: 5px 8px;
+}
+body.fc-smash .fig-side { display: none !important; }
+
+/* ===== FigHero =========================================================== */
+.fc-fighero, .fc-contrast { position: absolute; inset: 0; display: flex; flex-direction: column; padding: 12px 16px; }
+.fc-fh-hud { display: flex; justify-content: space-between; font-family: var(--fc-pix); font-size: 10px; color: var(--fc-text); }
+.fc-fh-hud b { color: var(--fc-gold); }
+.fc-fh-combo { color: var(--fc-gold); }
+.fc-fh-track {
+  position: relative; flex: 1; margin: 12px auto; width: min(340px, 100%);
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px;
+  background: #0c0c1c; border: 3px solid #000; overflow: hidden;
+}
+.fc-fh-lane { position: relative; border-left: 1px solid rgba(255,255,255,0.06); }
+.fc-fh-laneglow { position: absolute; inset: 0; background: var(--lc); opacity: 0; transition: opacity 0.08s; mix-blend-mode: screen; }
+.fc-fh-note {
+  position: absolute; left: 50%; transform: translate(-50%, -50%);
+  width: 78%; aspect-ratio: 1 / 1; max-height: 38px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--fc-pix); font-size: 13px; color: #14142a; border: 3px solid #000;
+  box-shadow: 0 3px 0 rgba(0,0,0,0.5);
+}
+.fc-fh-note.miss { opacity: 0.35; filter: grayscale(1); }
+.fc-fh-strike { position: absolute; left: 0; right: 0; height: 4px; background: var(--fc-gold); box-shadow: 0 0 10px var(--fc-gold); transform: translateY(-50%); }
+.fc-fh-key {
+  position: absolute; bottom: 6px; left: 50%; transform: translateX(-50%);
+  width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;
+  font-family: var(--fc-pix); font-size: 12px; color: var(--lc);
+  border: 3px solid var(--lc); background: rgba(0,0,0,0.4);
+}
+.fc-fh-judge {
+  position: absolute; left: 50%; top: 60%; transform: translateX(-50%);
+  font-family: var(--fc-pix); font-size: 16px; text-shadow: 2px 2px 0 #000;
+  animation: fc-judge 0.4s ease-out forwards; pointer-events: none;
+}
+@keyframes fc-judge { 0% { transform: translate(-50%, 8px); opacity: 0; } 30% { opacity: 1; } 100% { transform: translate(-50%, -10px); opacity: 0; } }
+.fc-fh-count { position: absolute; left: 50%; top: 40%; transform: translate(-50%,-50%); font-family: var(--fc-pix); font-size: 48px; color: var(--fc-gold); text-shadow: 3px 3px 0 #000; }
+.fc-fh-foot, .fc-ct-foot { text-align: center; font-size: 14px; color: var(--fc-dim); }
+.fc-fh-foot b { color: var(--fc-gold); }
+
+/* ===== FigContrast ======================================================= */
+.fc-ct-stage { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; }
+.fc-ct-pair { display: flex; gap: 22px; }
+.fc-ct-cell { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.fc-ct-cell span { font-family: var(--fc-pix); font-size: 8px; color: var(--fc-dim); }
+.fc-ct-img { width: 180px; height: 135px; image-rendering: pixelated; border: 3px solid #000; box-shadow: 4px 4px 0 rgba(0,0,0,0.5); }
+.fc-ct-result { font-family: var(--fc-pix); font-size: 13px; }
+.fc-ct-sliders { display: flex; flex-direction: column; gap: 10px; width: min(420px, 100%); margin: 0 auto 10px; }
+.fc-ct-sliders label { display: grid; grid-template-columns: 70px 1fr; align-items: center; gap: 10px; font-family: var(--fc-pix); font-size: 8px; color: var(--fc-text); }
+.fc-ct-sliders input[type=range] { -webkit-appearance: none; appearance: none; height: 10px; background: #0c0c1c; border: 2px solid #000; outline: none; }
+.fc-ct-sliders input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 18px; background: var(--fc-gold); border: 2px solid #000; cursor: pointer; }
+.fc-ct-sliders input[type=range]::-moz-range-thumb { width: 16px; height: 18px; background: var(--fc-gold); border: 2px solid #000; cursor: pointer; }
+.fc-ct-lock { width: min(420px, 100%); margin: 0 auto 8px; }
