@@ -434,6 +434,18 @@ function drawCursorShape(g,shape,color,glow,powered){ const fill=powered?'#9be9f
   if(shape==='triangle'){ g.beginPath(); g.moveTo(0,-17); g.lineTo(15,13); g.lineTo(-15,13); g.closePath(); g.fill(); g.shadowColor='transparent'; g.stroke(); return; }
   if(shape==='plus'){ const a=6,b=17; g.beginPath(); g.moveTo(-a,-b);g.lineTo(a,-b);g.lineTo(a,-a);g.lineTo(b,-a);g.lineTo(b,a);g.lineTo(a,a);g.lineTo(a,b);g.lineTo(-a,b);g.lineTo(-a,a);g.lineTo(-b,a);g.lineTo(-b,-a);g.lineTo(-a,-a);g.closePath(); g.fill(); g.shadowColor='transparent'; g.stroke(); return; }
   g.save(); g.translate(-2,-2); arrowPath(g); g.fill(); g.shadowColor='transparent'; g.stroke(); g.restore(); }
+// RIP Designs: a hand-drawn pointer cursor — the player IS the cursor. The
+// client gets the same doodle pointer with a little "glitch" X so it reads evil.
+function drawHandCursor(g,color,glow,powered,isPlayer){ g.save(); g.lineJoin='round'; g.lineCap='round';
+  const pts=[[-11,-14],[-11,9],[-5,3.5],[-1,13],[3,11.4],[-1,2],[7,2]];
+  g.shadowColor=glow||'rgba(40,40,120,.4)'; g.shadowBlur=powered?20:7; g.shadowOffsetY=2;
+  g.beginPath(); g.moveTo(pts[0][0],pts[0][1]); for(let i=1;i<pts.length;i++) g.lineTo(pts[i][0],pts[i][1]); g.closePath();
+  g.fillStyle=powered?'#bff0ff':color; g.fill();
+  g.shadowColor='transparent'; g.shadowOffsetY=0;
+  g.lineWidth=2.4; g.strokeStyle='#14144b'; g.stroke();
+  g.globalAlpha=0.45; g.lineWidth=1; g.beginPath(); g.moveTo(-8,-8.5); g.lineTo(-8,3.5); g.stroke(); g.globalAlpha=1;
+  if(!isPlayer){ g.strokeStyle='#14144b'; g.lineWidth=2; g.beginPath(); g.moveTo(1.5,-10); g.lineTo(7.5,-4); g.moveTo(7.5,-10); g.lineTo(1.5,-4); g.stroke(); }
+  g.restore(); }
 function drawFighter(f){ if(f.dead) return;
   const tr=tier(f.dmg); const vx=tr>=2?Math.sin(f.vib)*2.2:0,vy=tr>=2?Math.cos(f.vib*1.3)*2.2:0; const x=f.x+vx,y=f.y+vy;
   const speed=Math.hypot(f.vx,f.vy),stretch=Math.min(STRETCH_MAX,speed/STRETCH_DIV),ang=Math.atan2(f.vy,f.vx);
@@ -447,14 +459,10 @@ function drawFighter(f){ if(f.dead) return;
   const powered=f.scaleAmt>1.05;
   ctx.save(); ctx.globalAlpha=blinkA;
   ctx.save(); ctx.translate(x,y); ctx.scale((1+f.squash)*f.scaleAmt,(1-f.squash*0.7)*f.scaleAmt);
-  if(ready(f.spriteKey)){ ctx.save();ctx.rotate(ang);ctx.scale(1+stretch,1-stretch*0.45);ctx.rotate(-ang); drawSprite(f.spriteKey,0,0,1); ctx.restore(); }
-  else if(f.char && charReady(f.char.id)){ const inv=f.invinc>0, hue=(performance.now()*0.6)%360;
-    ctx.save(); ctx.rotate(ang);ctx.scale(1+stretch,1-stretch*0.45);ctx.rotate(-ang);
-    ctx.shadowColor=inv?('hsla('+hue+',95%,62%,.85)'):(powered?'rgba(52,224,216,.9)':f.glow); ctx.shadowBlur=powered?22:12;
-    if(inv) ctx.filter='hue-rotate('+hue+'deg) saturate(1.5)'; else if(powered) ctx.filter='brightness(1.25)';
-    drawCharImg(ctx, f.char.id, 56);
-    ctx.restore(); }
-  else { ctx.rotate(ang);ctx.scale(1+stretch,1-stretch*0.45);ctx.rotate(-ang); const inv=f.invinc>0, hue=(performance.now()*0.6)%360, bc=inv?('hsl('+hue+',95%,62%)'):f.color, bg=inv?('hsla('+hue+',95%,62%,.75)'):f.glow; drawCursorShape(ctx,(f.char&&f.char.shape)||'arrow',bc,bg,powered&&!inv); }
+  { // every fighter is a hand-drawn cursor — no uploaded sprite art
+    ctx.rotate(ang);ctx.scale(1+stretch,1-stretch*0.45);ctx.rotate(-ang);
+    const inv=f.invinc>0, hue=(performance.now()*0.6)%360, bc=inv?('hsl('+hue+',95%,62%)'):f.color, bg=inv?('hsla('+hue+',95%,62%,.75)'):f.glow;
+    drawHandCursor(ctx, bc, bg, powered&&!inv, f.isPlayer); }
   ctx.restore();
   if(f.charging>=0 && (f.char&&f.char.ability)==='energy'){ const c=Math.min(1,f.charging/1.2); ctx.save(); ctx.translate(x,y); ctx.shadowColor='rgba(255,90,60,.9)'; ctx.shadowBlur=18; ctx.fillStyle='rgba(255,160,80,'+(0.45+0.4*c)+')'; ctx.beginPath(); ctx.arc(0,0,6+c*22,0,6.2832); ctx.fill(); ctx.restore(); }
   if(f.charged>=0){ const pl=0.5+0.5*Math.sin(performance.now()*0.006); ctx.save(); ctx.translate(x,y); ctx.globalAlpha=0.32+0.22*pl; ctx.shadowColor='rgba(255,110,70,.9)'; ctx.shadowBlur=15+pl*10; ctx.fillStyle='rgba(255,150,95,0.5)'; ctx.beginPath(); ctx.arc(0,0,hurtR(f)+4+pl*2,0,6.2832); ctx.fill(); ctx.restore(); }

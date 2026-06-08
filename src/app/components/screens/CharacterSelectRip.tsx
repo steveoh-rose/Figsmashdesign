@@ -6,43 +6,30 @@
 import { useState } from 'react';
 import { CHARACTERS } from '../../game/config';
 
-/** A small single-weight line-art doodle per character, drawn in its colour. */
-function CharAvatar({ id, color }: { id: string; color: string }) {
-  const p = { fill: 'none', stroke: color, strokeWidth: 2.2, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const };
+/** A hand-drawn pointer cursor in the character's colour, plus its power emblem. */
+function CursorAvatar({ color, ability }: { color: string; ability: string }) {
+  const e = { fill: 'none', stroke: color, strokeWidth: 2, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const };
   return (
-    <svg width="46" height="46" viewBox="0 0 48 48" aria-hidden="true">
-      {id === 'mario' && (
-        <>
-          <path d="M12 26 C12 16 18 11 24 11 C30 11 36 16 36 26 Z" {...p} fill={color} fillOpacity={0.12} />
-          <path d="M12 26 H36" {...p} />
-          <circle cx="24" cy="33" r="6" {...p} />
-          <path d="M21 33 h6 M24 30 v6" {...p} />
-        </>
-      )}
-      {id === 'pikachu' && (
-        <>
-          <path d="M26 7 L15 27 H24 L21 41 L34 21 H25 Z" {...p} fill={color} fillOpacity={0.14} />
-        </>
-      )}
-      {id === 'fox' && (
-        <>
-          <path d="M24 41 C15 41 12 33 16 27 C17 31 19 32 20 32 C18 25 22 19 26 16 C25 22 30 23 31 28 C34 26 34 22 33 20 C38 25 37 35 30 39 C28 40 26 41 24 41 Z" {...p} fill={color} fillOpacity={0.14} />
-        </>
-      )}
-      {id === 'samus' && (
-        <>
-          <path d="M24 7 C29 13 31 20 31 27 C31 33 28 38 24 41 C20 38 17 33 17 27 C17 20 19 13 24 7 Z" {...p} fill={color} fillOpacity={0.12} />
-          <circle cx="24" cy="22" r="4" {...p} />
-          <path d="M17 30 L12 40 M31 30 L36 40" {...p} />
-        </>
-      )}
-      {id === 'link' && (
-        <>
-          <path d="M24 40 C16 40 11 33 13 24 C20 24 25 29 24 40 Z" {...p} fill={color} fillOpacity={0.14} />
-          <path d="M24 40 C32 40 37 31 35 21 C28 22 23 29 24 40 Z" {...p} fill={color} fillOpacity={0.14} />
-          <path d="M24 40 V20" {...p} />
-        </>
-      )}
+    <svg width="48" height="48" viewBox="0 0 48 48" aria-hidden="true">
+      <path
+        d="M13 8 L13 33 L19 27 L23 37 L27 35 L23 25 L31 25 Z"
+        fill={color}
+        stroke="#14144b"
+        strokeWidth="2.2"
+        strokeLinejoin="round"
+      />
+      <g transform="translate(32,9)">
+        {ability === 'fireball' && <circle cx="4" cy="5" r="5" fill={color} fillOpacity={0.3} stroke={color} strokeWidth="2" />}
+        {ability === 'lightning' && <path d="M6 -1 L0 7 H4 L2 13" {...e} />}
+        {ability === 'fire' && <path d="M4 -1 C8 3 8 8 4 12 C0 8 0 3 4 -1 Z" {...e} fill={color} fillOpacity={0.3} />}
+        {ability === 'energy' && (
+          <>
+            <circle cx="4" cy="5" r="5.5" {...e} />
+            <circle cx="4" cy="5" r="1.6" fill={color} stroke="none" />
+          </>
+        )}
+        {ability === 'boomerang' && <path d="M-1 0 C7 0 9 6 6 12 C4 8 1 5 -1 0 Z" {...e} fill={color} fillOpacity={0.3} />}
+      </g>
     </svg>
   );
 }
@@ -76,7 +63,7 @@ export function CharacterSelectRip({
             onClick={() => setCharId(c.id)}
             style={{ ['--cc' as string]: c.color }}
           >
-            <CharAvatar id={c.id} color={c.color} />
+            <CursorAvatar color={c.color} ability={c.ability} />
             <span className="rip-char-name">{c.name}</span>
             <span className="rip-char-ability">{c.desc}</span>
           </button>

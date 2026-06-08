@@ -59,11 +59,11 @@ export const LEVELS: Level[] = [
 ];
 
 export const CHARACTERS: Character[] = [
-  { id: 'mario',   name: 'Oldschool Plumber', shape: 'arrow',    color: '#e52521', glow: 'rgba(229,37,33,.5)',  rgb: '229,37,33',  ability: 'fireball',  desc: 'Fireball Shot' },
-  { id: 'pikachu', name: 'Electric Rat',      shape: 'triangle', color: '#ffcb05', glow: 'rgba(255,203,5,.5)',  rgb: '255,203,5',  ability: 'lightning', desc: 'Lightning Charge' },
-  { id: 'fox',     name: 'Flame Dog',         shape: 'diamond',  color: '#f0820f', glow: 'rgba(240,130,15,.5)', rgb: '240,130,15', ability: 'fire',      desc: 'Fire Charge' },
-  { id: 'samus',   name: 'Space Gurl',        shape: 'ring',     color: '#ff5a3c', glow: 'rgba(255,90,60,.5)',  rgb: '255,90,60',  ability: 'energy',    desc: 'Energy Ball (hold)' },
-  { id: 'link',    name: 'Sleepy Elf',        shape: 'plus',     color: '#2fa84f', glow: 'rgba(47,168,79,.5)',  rgb: '47,168,79',  ability: 'boomerang', desc: 'Homing Boomerang' },
+  { id: 'mario',   name: 'Ink Cursor',   shape: 'arrow',    color: '#2f6bff', glow: 'rgba(47,107,255,.5)', rgb: '47,107,255', ability: 'fireball',  desc: 'Ink Bomb' },
+  { id: 'pikachu', name: 'Spark Cursor', shape: 'triangle', color: '#ffc21f', glow: 'rgba(255,194,31,.5)', rgb: '255,194,31', ability: 'lightning', desc: 'Static Zap' },
+  { id: 'fox',     name: 'Ember Cursor', shape: 'diamond',  color: '#f0820f', glow: 'rgba(240,130,15,.5)', rgb: '240,130,15', ability: 'fire',      desc: 'Ember Dash' },
+  { id: 'samus',   name: 'Orbit Cursor', shape: 'ring',     color: '#ff5a8a', glow: 'rgba(255,90,138,.5)', rgb: '255,90,138', ability: 'energy',    desc: 'Energy Orb (hold)' },
+  { id: 'link',    name: 'Loop Cursor',  shape: 'plus',     color: '#1db981', glow: 'rgba(29,185,129,.5)', rgb: '29,185,129', ability: 'boomerang', desc: 'Homing Loop' },
 ];
 
 export const SHAPES: Shape[] = [
