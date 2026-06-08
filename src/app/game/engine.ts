@@ -404,9 +404,12 @@ function drawShapeKind(kind,w,h,o){ const rgb=(o&&o.shapeRGB)||'151,71,255', col
   if(kind==='arrow'){ ctx.lineWidth=Math.max(4,Math.min(w,h)*0.15); const ax=-w/2,ay=h/2,bx=w/2,by=-h/2, ang=Math.atan2(by-ay,bx-ax), hl=Math.max(10,Math.min(w,h)*0.34);
     ctx.beginPath(); ctx.moveTo(ax,ay); ctx.lineTo(bx,by); ctx.moveTo(bx,by); ctx.lineTo(bx-Math.cos(ang-0.45)*hl,by-Math.sin(ang-0.45)*hl); ctx.moveTo(bx,by); ctx.lineTo(bx-Math.cos(ang+0.45)*hl,by-Math.sin(ang+0.45)*hl); ctx.stroke(); ctx.shadowColor='transparent'; return; } }
 function drawBg(){ if(ready('background')){ ctx.drawImage(_img.background,0,0,W,H); return; }
-  if(_ripDriven){ // RIP doodle arena: eggshell paper + indigo dotted graph matrix
-    const g=ctx.createLinearGradient(0,0,0,H); g.addColorStop(0,'#f6f3ec'); g.addColorStop(1,'#ece9df'); ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
-    ctx.fillStyle='rgba(46,46,201,0.14)'; const s=30; for(let x=s;x<W;x+=s)for(let y=s;y<H;y+=s){ ctx.beginPath(); ctx.arc(x,y,1.5,0,6.2832); ctx.fill(); }
+  if(_ripDriven){ // RIP pixel arena: teal sky, cream pixel stars + cloud band
+    const g=ctx.createLinearGradient(0,0,0,H); g.addColorStop(0,'#3a7d8c'); g.addColorStop(1,'#1e404a'); ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+    ctx.fillStyle='rgba(243,237,200,0.10)'; const s=22; for(let x=8;x<W;x+=s)for(let y=8;y<H*0.82;y+=s){ ctx.fillRect(x,y,2,2); }
+    const base=Math.round(H*0.88), bumps=[0,0,8,12,8,0,12,16,8,0,8,12]; ctx.fillStyle='#bfe0e8';
+    for(let x=0;x<W;x+=12){ const t=base-bumps[((x/12)|0)%bumps.length]; ctx.fillRect(x,t,12,H-t); }
+    ctx.fillStyle='#e6f3f1'; for(let x=0;x<W;x+=12){ if(((x/12)|0)%3===0) ctx.fillRect(x,base-18,12,6); }
     return; }
   ctx.fillStyle=getCss('--bg'); ctx.fillRect(0,0,W,H); ctx.fillStyle=getCss('--grid'); const s=28; for(let x=s;x<W;x+=s)for(let y=s;y<H;y+=s)ctx.fillRect(x,y,1.4,1.4);
   const ac=(currentMap&&currentMap.accent)||'#1db954';
@@ -580,16 +583,17 @@ function render(){
   ctx.restore();
 }
 function drawDesignHUD(){ if(!_ripDriven||charSelectOpen) return;
-  const bw=Math.min(440,W*0.46), bh=18, bx=W/2-bw/2, by=94;
+  const bw=Math.round(Math.min(440,W*0.46)), bh=18, bx=Math.round(W/2-bw/2), by=94;
   ctx.save(); ctx.textAlign='center'; ctx.textBaseline='middle';
-  ctx.fillStyle='#2e2ec9'; ctx.font='700 24px Caveat, Nunito, sans-serif';
-  ctx.fillText('Design integrity', W/2, by-13);
-  ctx.lineWidth=2.2; ctx.strokeStyle='#2e2ec9'; ctx.fillStyle='#f5f1e8';
-  roundRect(bx,by,bw,bh,bh/2); ctx.fill(); ctx.stroke();
-  const hp=Math.max(0,Math.min(100,designHP)), fw=(bw-6)*hp/100;
-  const col=hp>55?'#2e2ec9':(hp>25?'#f0820f':'#ff4d6d');
-  if(fw>2){ ctx.fillStyle=col; roundRect(bx+3,by+3,fw,bh-6,(bh-6)/2); ctx.fill(); }
-  ctx.fillStyle='#2e2ec9'; ctx.font='800 13px Nunito, sans-serif';
+  ctx.fillStyle='#f3edc8'; ctx.font='700 16px "Pixelify Sans", monospace';
+  ctx.fillText('DESIGN INTEGRITY', W/2, by-12);
+  // pixel bar: dark track with cream border (square corners)
+  ctx.fillStyle='#16323a'; ctx.fillRect(bx,by,bw,bh);
+  ctx.lineWidth=3; ctx.strokeStyle='#f3edc8'; ctx.strokeRect(bx+1.5,by+1.5,bw-3,bh-3);
+  const hp=Math.max(0,Math.min(100,designHP)), fw=Math.round((bw-8)*hp/100);
+  const col=hp>55?'#5a9b4a':(hp>25?'#e6c64a':'#d24b3e');
+  if(fw>1){ ctx.fillStyle=col; ctx.fillRect(bx+4,by+4,fw,bh-8); }
+  ctx.fillStyle='#f3edc8'; ctx.font='700 13px "Pixelify Sans", monospace';
   ctx.fillText(Math.round(hp)+'%', W/2, by+bh+11);
   ctx.restore();
 }

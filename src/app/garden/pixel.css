@@ -1,0 +1,69 @@
+/* ===========================================================================
+   Pixel-art overrides — hard corners, chunky borders, offset (no-blur) shadows.
+   Loaded last so it wins over the rounded/soft styles.
+   =========================================================================== */
+.rip-screen, .rip-modal, .rip-bloom { font-family: var(--rip-hand); }
+
+/* Titles a touch smaller — the pixel font is wider than the old script. */
+.rip-start-title { font-size: 46px; letter-spacing: 1px; }
+.rip-add-title { font-size: 30px; }
+.rip-bloom-title { font-size: 34px; }
+.rip-garden-head h1 { font-size: 30px; }
+.rip-settings-title { font-size: 28px; }
+.rip-char-title h2 { font-size: 26px; }
+.rip-arena-losttitle { font-size: 22px; }
+.rip-eulogy-label { font-size: 15px; }
+
+/* Buttons → pixel buttons */
+.rip-btn {
+  border-radius: 0; border-width: 3px;
+  box-shadow: 3px 3px 0 rgba(43, 43, 58, 0.4);
+}
+.rip-btn:hover { transform: translate(-1px, -1px); box-shadow: 4px 4px 0 rgba(43, 43, 58, 0.4); }
+.rip-btn:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 rgba(43, 43, 58, 0.4); }
+.rip-btn.prim { box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.35); }
+.rip-start-btn { box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.3); }
+
+/* Swatches / inputs / chips */
+.rip-swatch { border-radius: 0; border: 2px solid var(--rip-ink); box-shadow: none; }
+.rip-eulogy-input { border-radius: 0; box-shadow: inset 0 0 0 2px var(--rip-paper-edge); background: rgba(255, 255, 255, 0.55); }
+.rip-eulogy-input.on-dark { box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.3); }
+
+/* Bottom nav */
+.rip-bottomnav {
+  border-radius: 0; border: 3px solid var(--rip-ink);
+  box-shadow: 4px 4px 0 rgba(43, 43, 58, 0.4);
+}
+.rip-navbtn { border-radius: 0; }
+.rip-navbtn-play {
+  border-radius: 0; border: 3px solid var(--rip-ink); margin-top: -16px;
+  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.35);
+}
+
+/* Cards / panels / FAB */
+.rip-phone {
+  border-radius: 0; border: 3px solid var(--rip-ink);
+  box-shadow: 6px 6px 0 rgba(0, 0, 0, 0.35);
+}
+.rip-phone-notch { border-radius: 0; }
+.rip-phone-preview { border-radius: 0; box-shadow: inset 0 0 0 2px var(--rip-paper-edge); }
+.rip-preview-img, .rip-bloom-relic { border-radius: 0; box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.3); }
+.rip-garden-paper {
+  border-radius: 0; border: 3px solid var(--rip-ink);
+  box-shadow: 8px 8px 0 rgba(0, 0, 0, 0.4);
+}
+.rip-add-plus {
+  border-radius: 0; border-width: 3px;
+  box-shadow: 3px 3px 0 rgba(43, 43, 58, 0.35);
+}
+.rip-add-plus:hover { transform: translate(-1px, -1px); }
+.rip-year { border-radius: 0; border: 2px solid var(--rip-ink); box-shadow: 3px 3px 0 rgba(43, 43, 58, 0.35); }
+.rip-char-card { border-radius: 0; border-width: 3px; }
+.rip-settings-opt { border-radius: 0; border-width: 3px; box-shadow: 3px 3px 0 rgba(43, 43, 58, 0.2); }
+.rip-settings-check { border-radius: 0; }
+.rip-arena-banner { border-radius: 0; border: 2px solid #14323a; }
+.rip-arena-lostbox { border-radius: 0; border: 3px solid var(--rip-ink); box-shadow: 6px 6px 0 rgba(0, 0, 0, 0.4); }
+.rip-open-count { border-radius: 0; }
+
+/* Pixel dot grid in the garden, crisp */
+.rip-grid, .rip-grid-home { image-rendering: pixelated; }

@@ -4,19 +4,36 @@
    indigo "sky", eggshell paper panels, single-weight blue line-art, dotted
    graph matrix. Intentionally rejects the cold enterprise design-tool look.
    =========================================================================== */
-@import url('https://fonts.googleapis.com/css2?family=Caveat:wght@500;600;700&family=Nunito:wght@400;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;500;600;700&family=Press+Start+2P&display=swap');
 
 :root {
-  --rip-indigo: #2f2fe6;
-  --rip-indigo-deep: #1a1a9e;
-  --rip-indigo-night: #14146b;
-  --rip-paper: #f5f1e8;
-  --rip-paper-edge: #e7e1d2;
-  --rip-ink: #2e2ec9;
-  --rip-ink-soft: rgba(46, 46, 201, 0.55);
-  --rip-ink-faint: rgba(46, 46, 201, 0.16);
-  --rip-script: 'Caveat', 'Comic Sans MS', cursive;
-  --rip-hand: 'Nunito', -apple-system, sans-serif;
+  /* Retro pixel-art palette (floating-island reference): teal sky, cream, dark */
+  --rip-indigo: #3a7d8c;       /* "sky" teal — used for screen backgrounds */
+  --rip-indigo-deep: #2b5e6b;
+  --rip-indigo-night: #1e404a;
+  --rip-paper: #f3edc8;        /* warm cream panel */
+  --rip-paper-edge: #d9d09a;
+  --rip-ink: #2b2b3a;          /* near-black ink */
+  --rip-ink-soft: rgba(43, 43, 58, 0.62);
+  --rip-ink-faint: rgba(43, 43, 58, 0.18);
+  /* retro accents */
+  --rip-red: #d24b3e;
+  --rip-green: #5a9b4a;
+  --rip-cloud: #8fcad6;
+  --rip-yellow: #e6c64a;
+  --rip-script: 'Pixelify Sans', monospace;       /* titles — pixel, weight 700 */
+  --rip-hand: 'Pixelify Sans', monospace;          /* body / UI */
+  --rip-tiny: 'Press Start 2P', monospace;         /* tiny accent labels */
+}
+
+/* Everything renders crisp / pixelated. */
+img, canvas { image-rendering: pixelated; image-rendering: crisp-edges; }
+
+/* Pixel-font titles need an explicit heavy weight (Pixelify Sans isn't cursive). */
+.rip-start-title, .rip-add-title, .rip-bloom-title, .rip-garden-head h1,
+.rip-settings-title, .rip-char-title h2, .rip-arena-losttitle, .rip-eulogy-label,
+.rip-phone-name, .rip-year, .wintitle, .winlabel {
+  font-weight: 700; letter-spacing: 0.01em;
 }
 
 /* ---- shared bits -------------------------------------------------------- */
@@ -166,7 +183,7 @@
   transition: transform 0.18s ease;
 }
 .rip-plant:hover { transform: translateY(-3px) scale(1.05); }
-.rip-plant svg { filter: drop-shadow(0 4px 6px rgba(46, 46, 201, 0.18)); }
+.rip-plant svg { filter: drop-shadow(0 4px 6px rgba(43, 43, 58, 0.18)); }
 
 .rip-ghost-pop {
   position: absolute; bottom: calc(100% - 6px); left: 50%; transform: translateX(-50%);

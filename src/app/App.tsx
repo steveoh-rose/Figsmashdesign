@@ -16,6 +16,7 @@ import { PauseMenu } from './components/screens/PauseMenu';
 import { RipShell } from './components/RipShell';
 import './garden/garden.css';
 import './garden/shell.css';
+import './garden/pixel.css';
 
 export default function App() {
   useEffect(() => {
