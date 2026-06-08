@@ -1,25 +1,51 @@
 /**
  * Character select — pick the avatar who will defend your design from the
- * Heartless Client, and how ruthless that client is. Doodle-themed to match the
- * garden rather than the old Smash-style screen.
+ * Heartless Client. Hand-drawn doodle marks, matching the garden aesthetic.
+ * (Difficulty now lives in Settings, not here.)
  */
 import { useState } from 'react';
-import { CHARACTERS, LEVELS, type CursorShape } from '../../game/config';
+import { CHARACTERS } from '../../game/config';
 
-function CursorMark({ shape, color }: { shape: CursorShape; color: string }) {
-  const common = { fill: color, stroke: color, strokeWidth: 2, strokeLinejoin: 'round' as const };
+/** A small single-weight line-art doodle per character, drawn in its colour. */
+function CharAvatar({ id, color }: { id: string; color: string }) {
+  const p = { fill: 'none', stroke: color, strokeWidth: 2.2, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const };
   return (
-    <svg width="44" height="44" viewBox="0 0 44 44" aria-hidden="true">
-      {shape === 'arrow' && <path d="M12 8 L12 34 L19 27 L24 37 L28 35 L23 25 L32 25 Z" {...common} />}
-      {shape === 'triangle' && <path d="M22 8 L34 34 L10 34 Z" {...common} fill={color} />}
-      {shape === 'diamond' && <path d="M22 7 L35 22 L22 37 L9 22 Z" {...common} />}
-      {shape === 'ring' && <circle cx="22" cy="22" r="13" fill="none" stroke={color} strokeWidth="5" />}
-      {shape === 'plus' && <path d="M18 9 H26 V18 H35 V26 H26 V35 H18 V26 H9 V18 H18 Z" {...common} />}
+    <svg width="46" height="46" viewBox="0 0 48 48" aria-hidden="true">
+      {id === 'mario' && (
+        <>
+          <path d="M12 26 C12 16 18 11 24 11 C30 11 36 16 36 26 Z" {...p} fill={color} fillOpacity={0.12} />
+          <path d="M12 26 H36" {...p} />
+          <circle cx="24" cy="33" r="6" {...p} />
+          <path d="M21 33 h6 M24 30 v6" {...p} />
+        </>
+      )}
+      {id === 'pikachu' && (
+        <>
+          <path d="M26 7 L15 27 H24 L21 41 L34 21 H25 Z" {...p} fill={color} fillOpacity={0.14} />
+        </>
+      )}
+      {id === 'fox' && (
+        <>
+          <path d="M24 41 C15 41 12 33 16 27 C17 31 19 32 20 32 C18 25 22 19 26 16 C25 22 30 23 31 28 C34 26 34 22 33 20 C38 25 37 35 30 39 C28 40 26 41 24 41 Z" {...p} fill={color} fillOpacity={0.14} />
+        </>
+      )}
+      {id === 'samus' && (
+        <>
+          <path d="M24 7 C29 13 31 20 31 27 C31 33 28 38 24 41 C20 38 17 33 17 27 C17 20 19 13 24 7 Z" {...p} fill={color} fillOpacity={0.12} />
+          <circle cx="24" cy="22" r="4" {...p} />
+          <path d="M17 30 L12 40 M31 30 L36 40" {...p} />
+        </>
+      )}
+      {id === 'link' && (
+        <>
+          <path d="M24 40 C16 40 11 33 13 24 C20 24 25 29 24 40 Z" {...p} fill={color} fillOpacity={0.14} />
+          <path d="M24 40 C32 40 37 31 35 21 C28 22 23 29 24 40 Z" {...p} fill={color} fillOpacity={0.14} />
+          <path d="M24 40 V20" {...p} />
+        </>
+      )}
     </svg>
   );
 }
-
-const DIFF_LABELS: Record<string, string> = { ollama: 'Ollama', haiku: 'Haiku', sonnet: 'Sonnet', opus: 'Opus' };
 
 export function CharacterSelectRip({
   designName,
@@ -27,12 +53,10 @@ export function CharacterSelectRip({
   onBack,
 }: {
   designName: string;
-  onConfirm: (charId: string, difficulty: string) => void;
+  onConfirm: (charId: string) => void;
   onBack: () => void;
 }) {
   const [charId, setCharId] = useState(CHARACTERS[0].id);
-  const [difficulty, setDifficulty] = useState('haiku');
-  const sel = CHARACTERS.find((c) => c.id === charId) || CHARACTERS[0];
 
   return (
     <div className="rip-screen rip-char">
@@ -52,30 +76,14 @@ export function CharacterSelectRip({
             onClick={() => setCharId(c.id)}
             style={{ ['--cc' as string]: c.color }}
           >
-            <CursorMark shape={c.shape} color={c.color} />
+            <CharAvatar id={c.id} color={c.color} />
             <span className="rip-char-name">{c.name}</span>
             <span className="rip-char-ability">{c.desc}</span>
           </button>
         ))}
       </div>
 
-      <div className="rip-char-diff">
-        <span className="rip-char-difflabel">How heartless?</span>
-        <div className="rip-char-diffseg">
-          {LEVELS.map((L) => (
-            <button
-              key={L.id}
-              className={difficulty === L.id ? 'on' : ''}
-              onClick={() => setDifficulty(L.id)}
-              title={L.desc}
-            >
-              {DIFF_LABELS[L.id] || L.id}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <button className="rip-btn prim rip-char-go" onClick={() => onConfirm(sel.id, difficulty)}>
+      <button className="rip-btn prim rip-char-go" onClick={() => onConfirm(charId)}>
         Defend the design ⚔
       </button>
     </div>

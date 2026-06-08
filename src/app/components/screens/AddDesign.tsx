@@ -7,7 +7,7 @@ import { useRef, useState } from 'react';
 import type { PurgedDesign } from '../../garden/types';
 import { PlantDoodle } from '../../garden/doodles';
 import { fileToDownscaledDataUrl, pluginStubDesign } from '../../garden/image';
-import { BottomNav } from './BottomNav';
+import { BottomNav, type NavTab } from './BottomNav';
 
 export function AddDesign({
   designs,
@@ -16,7 +16,7 @@ export function AddDesign({
 }: {
   designs: PurgedDesign[];
   onChosen: (design: { image: string; name: string }) => void;
-  onNavigate: (t: 'garden' | 'add') => void;
+  onNavigate: (t: NavTab) => void;
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);

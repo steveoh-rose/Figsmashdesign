@@ -12,11 +12,11 @@
   overflow: hidden;
 }
 
-/* declutter the engine chrome while the arena is live */
+/* declutter the dev/tuning chrome while the arena is live, but KEEP the Figma
+   sidebar — the whole conceit is that you're defending your design in Figma. */
 body.rip-arena .panel,
 body.rip-arena .head,
 body.rip-arena .tip,
-body.rip-arena .fig-side,
 body.rip-arena .fig-rul-top,
 body.rip-arena .fig-rul-left,
 body.rip-arena .fig-help { display: none !important; }
@@ -146,6 +146,32 @@ body.rip-arena .fig-help { display: none !important; }
 .rip-char-diffseg button.on { background: #fff; color: var(--rip-indigo-deep); border-color: #fff; }
 .rip-char-go { margin-top: 4px; font-size: 16px; padding: 14px; width: min(560px, 100%); background: #fff; color: var(--rip-indigo-deep); border-color: #fff; }
 .rip-char-go:hover { background: var(--rip-paper); }
+
+/* ---- Settings ----------------------------------------------------------- */
+.rip-settings {
+  background: linear-gradient(180deg, #eef0f3 0%, #e9ebf0 100%);
+  padding: 30px 20px 96px; justify-content: flex-start;
+}
+.rip-settings-inner { width: min(480px, 100%); display: flex; flex-direction: column; gap: 6px; }
+.rip-settings-title { font-family: var(--rip-script); font-size: 40px; color: var(--rip-ink); margin: 0; line-height: 0.95; }
+.rip-settings-sub { font-size: 13.5px; color: var(--rip-ink-soft); margin-bottom: 12px; }
+.rip-settings-list { display: flex; flex-direction: column; gap: 10px; }
+.rip-settings-opt {
+  position: relative; text-align: left; cursor: pointer;
+  background: var(--rip-paper); border: 2px solid transparent; border-radius: 16px;
+  padding: 14px 44px 14px 16px; box-shadow: 0 4px 12px rgba(46,46,201,0.08);
+  display: flex; flex-direction: column; gap: 2px; transition: border-color 0.13s ease, transform 0.13s ease;
+}
+.rip-settings-opt:hover { transform: translateY(-1px); }
+.rip-settings-opt.on { border-color: var(--rip-ink); }
+.rip-settings-optname { font-weight: 800; font-size: 15px; color: var(--rip-ink); }
+.rip-settings-optdesc { font-size: 12.5px; color: var(--rip-ink-soft); }
+.rip-settings-check {
+  position: absolute; right: 16px; top: 50%; transform: translateY(-50%);
+  width: 24px; height: 24px; border-radius: 50%; background: var(--rip-ink); color: var(--rip-paper);
+  display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700;
+}
+.rip-settings-note { font-size: 12px; color: var(--rip-ink-soft); margin-top: 14px; font-style: italic; }
 
 /* ---- Arena overlay ----------------------------------------------------- */
 .rip-arena-overlay { position: fixed; inset: 0; z-index: 60; pointer-events: none; }

@@ -8,16 +8,18 @@ import type { PurgedDesign } from '../../garden/types';
 import { GRID_COLS, GRID_ROWS } from '../../garden/storage';
 import { PlantDoodle } from '../../garden/doodles';
 import { GhostBlueprint } from '../../garden/ghost';
-import { BottomNav } from './BottomNav';
+import { BottomNav, type NavTab } from './BottomNav';
 
 export function GardenHome({
   designs,
   onSelect,
   onAdd,
+  onNavigate,
 }: {
   designs: PurgedDesign[];
   onSelect: (d: PurgedDesign) => void;
   onAdd: () => void;
+  onNavigate: (t: NavTab) => void;
 }) {
   const [hovered, setHovered] = useState<string | null>(null);
   const year = new Date().getFullYear();
@@ -81,7 +83,7 @@ export function GardenHome({
         </p>
       )}
 
-      <BottomNav active="garden" onNavigate={(t) => t === 'add' && onAdd()} />
+      <BottomNav active="garden" onNavigate={onNavigate} />
     </div>
   );
 }

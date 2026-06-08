@@ -11,15 +11,18 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { BattleDNA } from '../garden/types';
 import { useGarden } from '../garden/storage';
+import { getDifficulty } from '../garden/settings';
 import { StartScreen } from './screens/StartScreen';
 import { GardenHome } from './screens/GardenHome';
 import { AddDesign } from './screens/AddDesign';
+import { SettingsScreen } from './screens/SettingsScreen';
 import { CharacterSelectRip } from './screens/CharacterSelectRip';
 import { ArenaOverlay } from './screens/ArenaOverlay';
 import { RebirthBloom } from './screens/RebirthBloom';
 import { EulogyCard } from './screens/EulogyCard';
 
-type Phase = 'start' | 'garden' | 'add' | 'character' | 'arena' | 'bloom';
+type Phase = 'start' | 'garden' | 'add' | 'settings' | 'character' | 'arena' | 'bloom';
+type NavTab = 'garden' | 'add' | 'settings';
 
 interface RIPArena {
   loadImageStage: (dataUrl: string, name: string, cb?: (info: { palette: string[] }) => void) => void;
@@ -68,7 +71,8 @@ export function RipShell() {
     return () => window.removeEventListener('ripdesigns:matchend', onEnd);
   }, []);
 
-  const enterArena = useCallback((charId: string, difficulty: string) => {
+  const enterArena = useCallback((charId: string) => {
+    const difficulty = getDifficulty();
     lastMatch.current = { charId, difficulty };
     const ra = arena();
     setLost(false);
@@ -81,6 +85,13 @@ export function RipShell() {
       ra.startMatch({ charId, difficulty });
     }
   }, []);
+
+  // Bottom-nav routing shared by garden / add / settings screens.
+  const navigate = useCallback((t: NavTab) => setPhase(t), []);
+  // Empty garden? Send the player straight to uploading their first design.
+  const enterFromStart = useCallback(() => {
+    setPhase(garden.designs.length === 0 ? 'add' : 'garden');
+  }, [garden.designs.length]);
 
   const retry = useCallback(() => {
     setLost(false);
@@ -111,13 +122,14 @@ export function RipShell() {
 
   return (
     <div className="rip-shell">
-      {phase === 'start' && <StartScreen onEnter={() => setPhase('garden')} />}
+      {phase === 'start' && <StartScreen onEnter={enterFromStart} />}
 
       {phase === 'garden' && (
         <GardenHome
           designs={garden.designs}
           onSelect={(d) => setSelectedId(d.id)}
           onAdd={() => setPhase('add')}
+          onNavigate={navigate}
         />
       )}
 
@@ -128,9 +140,11 @@ export function RipShell() {
             setPending(d);
             setPhase('character');
           }}
-          onNavigate={(t) => setPhase(t === 'garden' ? 'garden' : 'add')}
+          onNavigate={navigate}
         />
       )}
+
+      {phase === 'settings' && <SettingsScreen onNavigate={navigate} />}
 
       {phase === 'character' && (
         <CharacterSelectRip

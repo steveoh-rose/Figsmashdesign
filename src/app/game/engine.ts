@@ -124,6 +124,9 @@ try{ const _sf=localStorage.getItem('figsmash.frame'); if(_sf) customFrame=JSON.
 // stage the AI ("Heartless Client") tries to smash and you defend.
 let imageStage=null;        // { img, name, image:dataUrl, palette:[] }
 let currentDesign=null;     // mirror used by captureBattleDNA after a match
+// The design has health. It starts at 100% and the AI ("Heartless Client")
+// chips it away by smashing tiles. If it hits 0% you lose; KO the client to win.
+let designHP=100, designTileTotal=12, designAtkCd=2.5;
 function buildImageStage(img, name){ props=[];
   const cols=4, rows=3, fw=img.naturalWidth||img.width||4, fh=img.naturalHeight||img.height||3;
   const stageW=Math.min(W*0.6, 700), scale=stageW/fw, stageH=fh*scale;
@@ -131,7 +134,9 @@ function buildImageStage(img, name){ props=[];
   for(let r=0;r<rows;r++) for(let c=0;c<cols;c++){
     const w=tw*scale, h=th*scale, cx=ofx+c*w+w/2, cy=ofy+r*h+h/2;
     props.push(mkProp('frameNode', cx, cy, Math.max(22,w), Math.max(22,h), { img, sx:c*tw, sy:r*th, sw:tw, sh:th, c1:'#9aa0b5' }));
-  } }
+  }
+  designTileTotal=cols*rows; designHP=100; designAtkCd=2.5; }
+function designTiles(){ const t=[]; for(const o of props) if(o.type==='frameNode') t.push(o); return t; }
 function samplePalette(img){ try{ const cv=document.createElement('canvas'); cv.width=24; cv.height=24; const g=cv.getContext('2d'); g.drawImage(img,0,0,24,24); const d=g.getImageData(0,0,24,24).data; const buckets={};
     for(let i=0;i<d.length;i+=4){ if(d[i+3]<128) continue; const r=d[i]>>5, gg=d[i+1]>>5, b=d[i+2]>>5; const k=(r<<6)|(gg<<3)|b; buckets[k]=(buckets[k]||0)+1; }
     const top=Object.keys(buckets).sort((a,b)=>buckets[b]-buckets[a]).slice(0,4);
@@ -258,9 +263,10 @@ function aiThink(dt){ if(cpu.respawn>0||cpu.stun>0||cpu.dash) return;
   if(b.state==='seek' && drops.length && !cpu.invinc && !(cpu.gun>0)){ const d=nearestDrop(cpu); if(d && Math.hypot(d.x-cpu.x,d.y-cpu.y)<460){ b.tgx=d.x; b.tgy=d.y; b._t=null; } }
 }
 function aiAct(dt){ if(cpu.respawn>0||cpu.stun>0||cpu.dash) return;
+  if(_ripDriven) ripAttackDesign(dt);   // the client chips away at the design on a timer
   if(lvl.canPunch && cpu.char&&cpu.char.ability && (cpu.specialCd||0)<=0 && Math.random()<dt*0.7 && Math.hypot(player.x-cpu.x,player.y-cpu.y)<640){ if(cpu.char.ability==='energy'){ fireEnergy(cpu,0.6+Math.random()*0.6); cpu.specialCd=1.3; } else useSpecial(cpu); }
   const b=cpu.brain; cpu.tx=b.tgx!=null?b.tgx:cpu.x; cpu.ty=b.tgy!=null?b.tgy:cpu.y;
-  if(lvl.driftOnly){ cpu.tx=player.x; cpu.ty=player.y; return; }   // just floats toward you, never attacks
+  if(lvl.driftOnly){ const t=_ripDriven?designTarget():null; cpu.tx=t?t.x:player.x; cpu.ty=t?t.y:player.y; return; }   // dumb client: just drifts at the design
   const menu = overTool||overPanel;                                 // truce while you're picking a tool / in settings
   if(lvl.canThrow && b.state==='seek'&&!cpu.held){ const o=b._t; if(o&&!o.held&&Math.hypot(o.x-cpu.x,o.y-cpu.y)<GRAB_RANGE+10){ grab(cpu,o); const i=props.indexOf(o); if(i>=0){props.splice(i,1);props.push(o);} b.state='throw'; } }
   if(lvl.canThrow && b.state==='throw'&&cpu.held && !menu){ const dist=Math.hypot(player.x-cpu.x,player.y-cpu.y); if(dist<b.standoff+60){ b.wind+=dt; if(b.wind>lvl.wind){ const lead=lvl.leadAim?0.18:0, tx=player.x+player.vx*lead, ty=player.y+player.vy*lead; const a=Math.atan2(ty-cpu.y,tx-cpu.x)+(Math.random()-0.5)*T.aiJitter*2; throwAt(cpu,cpu.held,cpu.x+Math.cos(a)*400,cpu.y+Math.sin(a)*400,1100); b.wind=0; } } else b.wind=0; } else b.wind=0;
@@ -268,6 +274,11 @@ function aiAct(dt){ if(cpu.respawn>0||cpu.stun>0||cpu.dash) return;
   if(lvl.canPunch && !menu && cpu.gun>0 && (cpu.gunCd||0)<=0 && Math.hypot(player.x-cpu.x,player.y-cpu.y)<720){ fireBolt(cpu); }
 }
 function nearestFreeProp(){ let best=null,bd=1e9; for(const o of props){ if(o.held||o.isLogo)continue; const d=Math.hypot(o.x-cpu.x,o.y-cpu.y); if(d<bd){bd=d;best=o;} } return best; }
+// ---- RIP Designs: the client breaks the design ----
+function designTarget(){ const t=designTiles(); if(!t.length) return null; let best=t[0],bd=1e9; for(const o of t){ const d=Math.hypot(o.x-cpu.x,o.y-cpu.y); if(d<bd){bd=d;best=o;} } return best; }
+function smashDesignTile(o){ const i=props.indexOf(o); if(i<0) return; props.splice(i,1); try{ cutProp(o,(Math.random()-0.5),-0.6,260+Math.random()*160); }catch(e){} designHP=Math.max(0,designHP-100/Math.max(1,designTileTotal)); pop(o.x,o.y-o.h*0.4,'design −'+Math.round(100/designTileTotal)+'%','#ff4d6d'); try{ sndHit(); }catch(e){} addShake(0.35); if(designHP<=0) ripEnd(false); }
+function ripAttackDesign(dt){ if(matchOver||winnerPending||countdown>0) return; if(cpu.respawn>0||(cpu.stun||0)>0||cpu.dash) return; designAtkCd-=dt; if(designAtkCd>0) return; designAtkCd=(lvl.designRate||2.5)*(0.8+Math.random()*0.4); const o=designTarget(); if(!o){ designHP=0; ripEnd(false); return; } smashDesignTile(o); }
+function ripEnd(youWin){ if(matchOver) return; winnerPending=false; matchOver=true; koBanner=0; try{ window.__ripBattleDNA=captureBattleDNA(); }catch(e){} try{ sndWin(); }catch(e){} try{ window.dispatchEvent(new CustomEvent('ripdesigns:matchend',{detail:{youWin, dna:window.__ripBattleDNA}})); }catch(e){} }
 
 function stepFighter(f,dt){ if(f.dead) return;
   f.punchCd=Math.max(0,f.punchCd-dt); f.sliceCd=Math.max(0,(f.sliceCd||0)-dt); f.punchFx=Math.max(0,f.punchFx-dt); f.hitTimer=Math.max(0,f.hitTimer-dt);
@@ -327,10 +338,14 @@ function physics(dt){
   for(const f of fighters){ if(f.invinc>0 && (f.starCd||0)<=0){ const o=(f===player)?cpu:player; if(Math.hypot(f.x-o.x,f.y-o.y) < hurtR(f)+hurtR(o)+4){ const dx=o.x-f.x,dy=o.y-f.y,l=Math.hypot(dx,dy)||1; applyHit(o,dx/l,dy/l,T.knock*1.7,13,o.x,o.y,f); f.starCd=0.45; shock(o.x,o.y,'#ffd23f'); } } }
   whiteFlash=Math.max(0,whiteFlash-dt*3); koBanner=Math.max(0,koBanner-dt);
 }
-function ko(f){ if(f.respawn>0||matchOver||winnerPending) return; if(f.isPlayer){ scoreCpu++; koTxt='LOST A STOCK'; setTaunt(cpu);} else { scoreYou++; koTxt='K.O.'; } koBanner=1.0; whiteFlash=0.55; hitstop=0.18; addShake(0.95); timeScale=0.18; sndKO(); spark(clamp(f.x,20,W-20),clamp(f.y,20,H-20),f.vx,f.vy,18);
+function ko(f){ if(f.respawn>0||matchOver||winnerPending) return;
+  const ripWin = _ripDriven && !f.isPlayer;   // KO the client → you win and the design survives
+  if(f.isPlayer){ scoreCpu++; koTxt=_ripDriven?'YOU FELL — RESPAWNING':'LOST A STOCK'; if(!_ripDriven)setTaunt(cpu);} else { scoreYou++; koTxt=_ripDriven?'CLIENT DOWN!':'K.O.'; }
+  koBanner=1.0; whiteFlash=0.55; hitstop=0.18; addShake(0.95); timeScale=0.18; sndKO(); spark(clamp(f.x,20,W-20),clamp(f.y,20,H-20),f.vx,f.vy,18);
   if(f.held){f.held.held=false;f.held=null;}
   f.dmg=0;f.hitTimer=0;f.scaleTarget=1;f.scaleAmt=1;f.invinc=0;f.gun=0;f.gunCd=0;f.starCd=0;f.dash=null;f.charging=-1;f.stun=0;f.specialCd=0;f.charged=-1;
-  if(scoreYou>=STOCKS_TO_WIN||scoreCpu>=STOCKS_TO_WIN){ winnerPending=true; f.dead=true; f.vx=f.vy=0; setTimeout(showWinScreen,1400); return; }   // out for good on the 5th — no respawn
+  if(ripWin){ winnerPending=true; f.dead=true; f.vx=f.vy=0; setTimeout(()=>ripEnd(true),1400); return; }   // single KO ends it in RIP mode
+  if(!_ripDriven && (scoreYou>=STOCKS_TO_WIN||scoreCpu>=STOCKS_TO_WIN)){ winnerPending=true; f.dead=true; f.vx=f.vy=0; setTimeout(showWinScreen,1400); return; }   // legacy: out for good on the 5th
   f.respawn=RESPAWN_TIME; f.spawnGuard=0; f.x=f.home.x; f.y=-50; f.vx=f.vy=0; f.tx=f.x; f.ty=f.y; f.brain.state='seek'; }
 function triggerForceQuit(target){
   if(fqActive) return; fqActive=true; hitstop=0.25; sndFQ();
@@ -388,7 +403,12 @@ function drawShapeKind(kind,w,h,o){ const rgb=(o&&o.shapeRGB)||'151,71,255', col
   if(kind==='line'){ ctx.lineWidth=Math.max(4,Math.min(w,h)*0.18); ctx.beginPath(); ctx.moveTo(-w/2,h/2); ctx.lineTo(w/2,-h/2); ctx.stroke(); ctx.shadowColor='transparent'; return; }
   if(kind==='arrow'){ ctx.lineWidth=Math.max(4,Math.min(w,h)*0.15); const ax=-w/2,ay=h/2,bx=w/2,by=-h/2, ang=Math.atan2(by-ay,bx-ax), hl=Math.max(10,Math.min(w,h)*0.34);
     ctx.beginPath(); ctx.moveTo(ax,ay); ctx.lineTo(bx,by); ctx.moveTo(bx,by); ctx.lineTo(bx-Math.cos(ang-0.45)*hl,by-Math.sin(ang-0.45)*hl); ctx.moveTo(bx,by); ctx.lineTo(bx-Math.cos(ang+0.45)*hl,by-Math.sin(ang+0.45)*hl); ctx.stroke(); ctx.shadowColor='transparent'; return; } }
-function drawBg(){ if(ready('background')){ ctx.drawImage(_img.background,0,0,W,H); return; } ctx.fillStyle=getCss('--bg'); ctx.fillRect(0,0,W,H); ctx.fillStyle=getCss('--grid'); const s=28; for(let x=s;x<W;x+=s)for(let y=s;y<H;y+=s)ctx.fillRect(x,y,1.4,1.4);
+function drawBg(){ if(ready('background')){ ctx.drawImage(_img.background,0,0,W,H); return; }
+  if(_ripDriven){ // RIP doodle arena: eggshell paper + indigo dotted graph matrix
+    const g=ctx.createLinearGradient(0,0,0,H); g.addColorStop(0,'#f6f3ec'); g.addColorStop(1,'#ece9df'); ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+    ctx.fillStyle='rgba(46,46,201,0.14)'; const s=30; for(let x=s;x<W;x+=s)for(let y=s;y<H;y+=s){ ctx.beginPath(); ctx.arc(x,y,1.5,0,6.2832); ctx.fill(); }
+    return; }
+  ctx.fillStyle=getCss('--bg'); ctx.fillRect(0,0,W,H); ctx.fillStyle=getCss('--grid'); const s=28; for(let x=s;x<W;x+=s)for(let y=s;y<H;y+=s)ctx.fillRect(x,y,1.4,1.4);
   const ac=(currentMap&&currentMap.accent)||'#1db954';
   ctx.save(); ctx.globalAlpha=0.045; ctx.fillStyle=ac; ctx.font='900 130px JetBrains Mono'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText((currentMap?currentMap.name:'').toUpperCase(), W/2, H*0.54); ctx.restore();
   ctx.fillStyle='rgba(12,12,16,.55)'; roundRect(16,74,148,H-150,14); ctx.fill();
@@ -547,7 +567,22 @@ function render(){
   drawMarquee(); drawShapeMarquee(); drawCursorGlyph(); drawBlade(); drawFx();
   if(whiteFlash>0){ ctx.fillStyle='rgba(255,255,255,'+whiteFlash*0.5+')'; ctx.fillRect(-40,-40,W+80,H+80); }
   if(koBanner>0){ const a=Math.min(1,koBanner*2); ctx.globalAlpha=a; ctx.fillStyle=koTxt==='K.O.'?'#34e0d8':(koTxt==='FORCE QUIT'?'#ffd23f':'#ff4d97'); ctx.font='900 '+(koTxt==='K.O.'?84:46)+'px JetBrains Mono'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(koTxt,W/2,H/2); ctx.globalAlpha=1; }
+  drawDesignHUD();
   drawCount();
+  ctx.restore();
+}
+function drawDesignHUD(){ if(!_ripDriven||charSelectOpen) return;
+  const bw=Math.min(440,W*0.46), bh=18, bx=W/2-bw/2, by=94;
+  ctx.save(); ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillStyle='#2e2ec9'; ctx.font='700 24px Caveat, Nunito, sans-serif';
+  ctx.fillText('Design integrity', W/2, by-13);
+  ctx.lineWidth=2.2; ctx.strokeStyle='#2e2ec9'; ctx.fillStyle='#f5f1e8';
+  roundRect(bx,by,bw,bh,bh/2); ctx.fill(); ctx.stroke();
+  const hp=Math.max(0,Math.min(100,designHP)), fw=(bw-6)*hp/100;
+  const col=hp>55?'#2e2ec9':(hp>25?'#f0820f':'#ff4d6d');
+  if(fw>2){ ctx.fillStyle=col; roundRect(bx+3,by+3,fw,bh-6,(bh-6)/2); ctx.fill(); }
+  ctx.fillStyle='#2e2ec9'; ctx.font='800 13px Nunito, sans-serif';
+  ctx.fillText(Math.round(hp)+'%', W/2, by+bh+11);
   ctx.restore();
 }
 let acc=0,last=performance.now(),fpsT=0,frames=0; const STEP=1/120;
@@ -642,7 +677,7 @@ function clearArena(){ debris.length=0; bladePts.length=0; bolts.length=0; speci
 function captureBattleDNA(){
   if(currentDesign && currentDesign.image){
     const pal=(currentDesign.palette&&currentDesign.palette.length)?currentDesign.palette:['#0052CC','#FF5630','#F4F5F7'];
-    return { fileName: currentDesign.name||'Untitled.fig', layerCount: (props?props.length:12)||12, colorPalette: pal.slice(0,4), image: currentDesign.image, defendedBy: (player&&player.char&&player.char.id)||null };
+    return { fileName: currentDesign.name||'Untitled.fig', layerCount: designTileTotal||12, colorPalette: pal.slice(0,4), image: currentDesign.image, defendedBy: (player&&player.char&&player.char.id)||null };
   }
   const f=customFrame; let fileName, layerCount, palette=[];
   if(f && f.nodes && f.nodes.length){
