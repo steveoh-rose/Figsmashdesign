@@ -6,8 +6,18 @@
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useClock, useConsole, type CartridgeId } from './store';
+import { CHARACTERS } from '../game/config';
 import { FigHero } from './games/FigHero';
 import { FigContrast } from './games/FigContrast';
+
+/** A small pixel pointer cursor in a fighter's colour. */
+function CursorChip({ color }: { color: string }) {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" style={{ imageRendering: 'pixelated' }}>
+      <path d="M5 3 L5 19 L9 15 L12 21 L14.5 20 L11.5 14 L18 14 Z" fill={color} stroke="#000" strokeWidth="1.6" strokeLinejoin="round" />
+    </svg>
+  );
+}
 import './console.css';
 
 type Mode = 'desktop' | 'stageselect' | 'boot' | 'game';
@@ -93,6 +103,7 @@ export function FigConsole() {
   const [selected, setSelected] = useState<CartridgeId>('figsmash');
   const [results, setResults] = useState<{ cart: CartridgeId; score: number; isHigh: boolean; win?: boolean } | null>(null);
   const [smashStage, setSmashStage] = useState('design');
+  const [smashChar, setSmashChar] = useState(CHARACTERS[0].id);
   const [smashDiff, setSmashDiff] = useState('haiku');
   const bootTimer = useRef<number | null>(null);
 
@@ -110,10 +121,10 @@ export function FigConsole() {
       document.body.classList.add('rip-arena', 'fc-smash');
       const ra = arena();
       if (!ra) return;
-      if (smashStage === 'design') ra.loadImageStage(SMASH_DESIGN, 'review_build_v3.fig', () => ra.startMatch({ charId: 'mario', difficulty: smashDiff }));
-      else { ra.setStage(smashStage); ra.startMatch({ charId: 'mario', difficulty: smashDiff }); }
+      if (smashStage === 'design') ra.loadImageStage(SMASH_DESIGN, 'review_build_v3.fig', () => ra.startMatch({ charId: smashChar, difficulty: smashDiff }));
+      else { ra.setStage(smashStage); ra.startMatch({ charId: smashChar, difficulty: smashDiff }); }
     });
-  }, [startBoot, smashStage, smashDiff]);
+  }, [startBoot, smashStage, smashChar, smashDiff]);
 
   // FigSmash routes through stage select first; other carts boot straight in.
   const launch = useCallback((id: CartridgeId) => {
@@ -245,6 +256,24 @@ export function FigConsole() {
                   </button>
                 ))}
               </div>
+              <div className="fc-ss-title fc-ss-subtitle">▶ SELECT FIGHTER</div>
+              <div className="fc-ss-chars">
+                {CHARACTERS.map((c) => (
+                  <button
+                    key={c.id}
+                    className={`fc-ss-char ${smashChar === c.id ? 'sel' : ''}`}
+                    style={{ ['--cc' as string]: c.color }}
+                    onClick={() => setSmashChar(c.id)}
+                    onDoubleClick={launchSmash}
+                    title={`${c.name} — ${c.desc}`}
+                  >
+                    <CursorChip color={c.color} />
+                    <span className="fc-ss-charname">{c.name.replace(' Cursor', '')}</span>
+                    <span className="fc-ss-charpow">{c.desc}</span>
+                  </button>
+                ))}
+              </div>
+
               <div className="fc-ss-diff">
                 <span className="fc-ss-difflabel">CLIENT IQ</span>
                 {SMASH_DIFFS.map((d) => (
