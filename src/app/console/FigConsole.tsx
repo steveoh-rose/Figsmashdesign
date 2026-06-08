@@ -7,6 +7,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useClock, useConsole, type CartridgeId } from './store';
 import { CHARACTERS } from '../game/config';
+import { VoxelGhost, VoxelSmiley, VoxelEye } from './voxel';
 import { FigHero } from './games/FigHero';
 import { FigContrast } from './games/FigContrast';
 
@@ -45,35 +46,10 @@ interface Cart {
   art: React.ReactNode;
 }
 
-const SmashArt = () => (
-  <svg viewBox="0 0 16 16" className="fc-cartpix">
-    <rect width="16" height="16" fill="#2b1740" />
-    <rect x="3" y="9" width="10" height="2" fill="#e7b53c" />
-    <rect x="5" y="4" width="2" height="4" fill="#d24b3e" /><rect x="4" y="3" width="4" height="1" fill="#d24b3e" />
-    <rect x="9" y="5" width="3" height="3" fill="#46c6d9" />
-    <rect x="2" y="11" width="12" height="1" fill="#6cc36a" />
-  </svg>
-);
-const HeroArt = () => (
-  <svg viewBox="0 0 16 16" className="fc-cartpix">
-    <rect width="16" height="16" fill="#16213e" />
-    {[0, 1, 2, 3].map((i) => <rect key={i} x={2 + i * 3} y={2} width="2" height="12" fill={['#e7b53c', '#b06cd9', '#46c6d9', '#6cc36a'][i]} opacity="0.5" />)}
-    {[[0, 4], [1, 7], [2, 5], [3, 9]].map(([l, y], i) => <rect key={i} x={2 + l * 3} y={y} width="2" height="2" fill={['#e7b53c', '#b06cd9', '#46c6d9', '#6cc36a'][l]} />)}
-    <rect x="1" y="12" width="14" height="1" fill="#fff" />
-  </svg>
-);
-const ContrastArt = () => (
-  <svg viewBox="0 0 16 16" className="fc-cartpix">
-    <rect width="8" height="16" fill="#3a7d8c" /><rect x="8" width="8" height="16" fill="#6e3b2a" />
-    <rect x="6" y="6" width="4" height="4" fill="#e6c64a" />
-    <rect x="2" y="13" width="12" height="1" fill="#f3edc8" />
-  </svg>
-);
-
 const CARTS: Cart[] = [
-  { id: 'figsmash', name: 'FigSmash', tag: 'BRAWLER', blurb: 'KO the Unaligned Stakeholder.', color: '#ef5d52', art: <SmashArt /> },
-  { id: 'fighero', name: 'FigHero', tag: 'RHYTHM', blurb: 'Shortcut muscle-memory drill.', color: '#4d7cff', art: <HeroArt /> },
-  { id: 'figcontrast', name: 'FigContrast', tag: 'CALIBRATE', blurb: 'Dial in the bit-crushed signal.', color: '#2ec4b6', art: <ContrastArt /> },
+  { id: 'figsmash', name: 'FigSmash', tag: 'BRAWLER', blurb: 'KO the Unaligned Stakeholder.', color: '#ef5d52', art: <VoxelGhost /> },
+  { id: 'fighero', name: 'FigHero', tag: 'RHYTHM', blurb: 'Shortcut muscle-memory drill.', color: '#4d7cff', art: <VoxelSmiley /> },
+  { id: 'figcontrast', name: 'FigContrast', tag: 'CALIBRATE', blurb: 'Dial in the bit-crushed signal.', color: '#2ec4b6', art: <VoxelEye /> },
 ];
 
 const SMASH_DESIGN = `data:image/svg+xml;utf8,${encodeURIComponent(

@@ -4,11 +4,12 @@
    Space Grotesk content + Press Start 2P chrome. Games play on a dark CRT screen.
    =========================================================================== */
 @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&display=swap');
 
 :root {
-  --fc-cream: #f3e7c4;
-  --fc-grid: rgba(28, 28, 28, 0.11);
-  --fc-paper: #faf7ef;
+  --fc-cream: #f2efe6;
+  --fc-grid: rgba(28, 28, 28, 0.13);
+  --fc-paper: #faf8f2;
   --fc-ink: #1c1c1c;
   --fc-dim: #6f6b62;
   --fc-screen: #15161f;
@@ -19,16 +20,16 @@
   --fc-blue: #4d7cff;
   --fc-pix: 'Press Start 2P', monospace;
   --fc-sans: 'Space Grotesk', system-ui, sans-serif;
+  --fc-serif: 'Instrument Serif', Georgia, serif;
 }
 
 .fc-root {
   position: fixed; inset: 0; z-index: 200;
   display: flex; align-items: center; justify-content: center; padding: 20px;
   background-color: var(--fc-cream);
-  background-image:
-    linear-gradient(var(--fc-grid) 1px, transparent 1px),
-    linear-gradient(90deg, var(--fc-grid) 1px, transparent 1px);
-  background-size: 22px 22px;
+  /* Pantom-style "+" texture grid */
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='28'%3E%3Cpath d='M14 9.5 V18.5 M9.5 14 H18.5' stroke='%231c1c1c' stroke-opacity='0.16' stroke-width='1.5'/%3E%3C/svg%3E");
+  background-size: 28px 28px;
   font-family: var(--fc-sans); color: var(--fc-ink);
 }
 .fc-root *, .fc-smashbar { box-sizing: border-box; }
@@ -93,9 +94,9 @@
 .fc-cart::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 7px; background: var(--cc); border-bottom: 2px solid var(--fc-ink); }
 .fc-cart:hover { transform: translate(-2px, -2px); box-shadow: 6px 6px 0 var(--fc-ink); }
 .fc-cart.sel { border-color: var(--cc); box-shadow: 5px 5px 0 var(--cc); }
-.fc-cart-art { width: 80px; height: 80px; margin-top: 6px; border: 2px solid var(--fc-ink); }
+.fc-cart-art { height: 86px; margin-top: 8px; display: flex; align-items: center; justify-content: center; }
 .fc-cartpix { width: 100%; height: 100%; image-rendering: pixelated; display: block; }
-.fc-cart-name { font-family: var(--fc-sans); font-weight: 700; font-size: 17px; letter-spacing: -0.01em; }
+.fc-cart-name { font-family: var(--fc-serif); font-weight: 400; font-size: 24px; letter-spacing: 0; line-height: 1; }
 .fc-cart-tag { font-family: var(--fc-pix); font-size: 6.5px; color: #fff; background: var(--cc); padding: 4px 7px; border: 1.5px solid var(--fc-ink); }
 .fc-cart-hi { font-family: var(--fc-pix); font-size: 7px; color: var(--fc-dim); }
 
@@ -108,8 +109,8 @@
   background: #fff; border: 2px solid var(--fc-ink); padding: 10px 12px; box-shadow: 2px 2px 0 var(--fc-ink);
 }
 .fc-sidenote { margin-top: auto; border-top: 2px dashed var(--fc-ink); padding-top: 14px; }
-.fc-sel-name { font-family: var(--fc-pix); font-size: 10px; color: var(--fc-ink); margin-bottom: 8px; }
-.fc-sel-blurb { font-family: var(--fc-sans); font-size: 14px; line-height: 1.35; color: var(--fc-dim); margin-bottom: 14px; }
+.fc-sel-name { font-family: var(--fc-serif); font-size: 26px; line-height: 1; color: var(--fc-ink); margin-bottom: 8px; }
+.fc-sel-blurb { font-family: var(--fc-sans); font-size: 14px; line-height: 1.4; color: var(--fc-dim); margin-bottom: 16px; }
 
 /* ---- buttons ------------------------------------------------------------ */
 .fc-btn {
@@ -176,7 +177,7 @@
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
   animation: fc-insert-cart 1.6s cubic-bezier(0.5, 0, 0.7, 1) forwards;
 }
-.fc-cartridge-label { width: 56px; height: 56px; background: #000; padding: 4px; }
+.fc-cartridge-label { display: flex; align-items: center; justify-content: center; }
 .fc-cartridge-name { font-family: var(--fc-pix); font-size: 9px; color: #000; }
 .fc-slotmouth { position: absolute; left: 50%; bottom: 6px; transform: translateX(-50%); width: 150px; height: 16px; background: #000; box-shadow: inset 0 4px 0 rgba(255, 255, 255, 0.08); }
 @keyframes fc-insert-cart {
