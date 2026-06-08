@@ -26,7 +26,22 @@ function rotPt(x: number, y: number, deg: number) { const a = (deg * Math.PI) / 
 function corners(b: Box) {
   return ([[-1, -1], [1, -1], [1, 1], [-1, 1]] as const).map(([sx, sy]) => { const r = rotPt(sx * b.hw, sy * b.hh, b.rot); return { x: b.cx + r.x, y: b.cy + r.y }; });
 }
-function inside(b: Box, px: number, py: number) { const d = rotPt(px - b.cx, py - b.cy, -b.rot); return Math.abs(d.x) <= b.hw && Math.abs(d.y) <= b.hh; }
+const RESIZE_R = 15;   // grab a corner within this radius
+const ROTATE_R = 30;   // rotate when within this ring just outside the edges
+const CORNER_SGN = [[-1, -1], [1, -1], [1, 1], [-1, 1]] as const;
+// Which interaction a point maps to, given the current box.
+function zoneAt(b: Box, px: number, py: number): { mode: '' | 'resize' | 'rotate' | 'move'; corner: number } {
+  const cs = corners(b);
+  let best = 0, bd = 1e9;
+  cs.forEach((c, i) => { const d = Math.hypot(c.x - px, c.y - py); if (d < bd) { bd = d; best = i; } });
+  if (bd <= RESIZE_R) return { mode: 'resize', corner: best };
+  const lo = rotPt(px - b.cx, py - b.cy, -b.rot);
+  const isIn = Math.abs(lo.x) <= b.hw && Math.abs(lo.y) <= b.hh;
+  const outDist = Math.hypot(Math.max(0, Math.abs(lo.x) - b.hw), Math.max(0, Math.abs(lo.y) - b.hh));
+  if (!isIn && outDist <= ROTATE_R) return { mode: 'rotate', corner: -1 };  // near the edge, just outside
+  if (isIn) return { mode: 'move', corner: -1 };
+  return { mode: '', corner: -1 };
+}
 function scoreOf(t: Box, g: Box) {
   const posDist = Math.hypot(t.cx - g.cx, t.cy - g.cy);
   const posScore = Math.max(0, 1 - posDist / 110);
@@ -70,6 +85,9 @@ function startMusic() {
 }
 
 const ACCENT = '#ff9f43';
+function zoneCursor(mode: string) {
+  return mode === 'resize' ? 'nwse-resize' : mode === 'rotate' ? 'grab' : mode === 'move' ? 'move' : 'default';
+}
 
 function BoxShape({ b, fill, dashed, handles }: { b: Box; fill?: string; dashed?: boolean; handles?: boolean }) {
   return (
@@ -94,6 +112,8 @@ export function FigAlign({ highScore, onExit }: { highScore: number; onExit: (sc
   const [grow, setGrow] = useState(0);
   const [scores, setScores] = useState<number[]>([]);
   const [lastScore, setLastScore] = useState(0);
+  const [hoverMode, setHoverMode] = useState<string>('');
+  const [dragMode, setDragMode] = useState<string>('');
 
   const svgRef = useRef<SVGSVGElement>(null);
   const guessRef = useRef(guess); guessRef.current = guess;
@@ -131,29 +151,46 @@ export function FigAlign({ highScore, onExit }: { highScore: number; onExit: (sc
     if (drag.mode === 'move') { sh.cx = clamp(p.x - drag.offx, 8, VB - 8); sh.cy = clamp(p.y - drag.offy, 8, VB - 8); }
     else if (drag.mode === 'rotate') { const ang = (Math.atan2(p.y - sh.cy, p.x - sh.cx) * 180) / Math.PI; sh.rot = drag.startRot + (ang - drag.startAng); }
     else if (drag.mode === 'resize') {
-      const a = drag.anchor, u = rotPt(1, 0, sh.rot), v = rotPt(0, 1, sh.rot);
+      // proportional: scale both extents uniformly along the diagonal, opposite corner anchored.
+      const a = drag.anchor, u = rotPt(1, 0, drag.rot0), v = rotPt(0, 1, drag.rot0);
       const dx = p.x - a.x, dy = p.y - a.y, du = dx * u.x + dy * u.y, dv = dx * v.x + dy * v.y;
-      const su = du >= 0 ? 1 : -1, sv = dv >= 0 ? 1 : -1;
-      sh.hw = clamp(Math.abs(du) / 2, MIN_H, MAX_H); sh.hh = clamp(Math.abs(dv) / 2, MIN_H, MAX_H);
-      sh.cx = a.x + u.x * su * sh.hw + v.x * sv * sh.hh; sh.cy = a.y + u.y * su * sh.hw + v.y * sv * sh.hh;
+      const diag = Math.hypot(drag.hw0, drag.hh0);
+      const dux = (drag.sgnX * drag.hw0) / diag, dvy = (drag.sgnY * drag.hh0) / diag;
+      let scale = (du * dux + dv * dvy) / (2 * diag);
+      scale = clamp(scale, Math.max(MIN_H / drag.hw0, MIN_H / drag.hh0), Math.min(MAX_H / drag.hw0, MAX_H / drag.hh0));
+      sh.hw = drag.hw0 * scale; sh.hh = drag.hh0 * scale; sh.rot = drag.rot0;
+      sh.cx = a.x + u.x * drag.sgnX * sh.hw + v.x * drag.sgnY * sh.hh;
+      sh.cy = a.y + u.y * drag.sgnX * sh.hw + v.y * drag.sgnY * sh.hh;
     }
     setGuess(sh);
   }, []);
+
+  const onHover = (e: React.PointerEvent) => {
+    if (refs.current.phase !== 'dial' || dragRef.current) return;
+    const p = toVB(e.clientX, e.clientY);
+    setHoverMode(zoneAt(guessRef.current, p.x, p.y).mode);
+  };
 
   const onDown = (e: React.PointerEvent) => {
     if (refs.current.phase !== 'dial') return;
     e.preventDefault();
     const p = toVB(e.clientX, e.clientY);
     const sh = guessRef.current;
-    const cs = corners(sh);
-    let best = 0, bd = 1e9; cs.forEach((c, i) => { const d = Math.hypot(c.x - p.x, c.y - p.y); if (d < bd) { bd = d; best = i; } });
+    const z = zoneAt(sh, p.x, p.y);
     let drag: any = null;
-    if (bd <= 14) { const opp = cs[(best + 2) % 4]; drag = { mode: 'resize', anchor: { x: opp.x, y: opp.y } }; }
-    else if (bd <= 32 && !inside(sh, p.x, p.y)) { drag = { mode: 'rotate', startRot: sh.rot, startAng: (Math.atan2(p.y - sh.cy, p.x - sh.cx) * 180) / Math.PI }; }
-    else if (inside(sh, p.x, p.y)) { drag = { mode: 'move', offx: p.x - sh.cx, offy: p.y - sh.cy }; }
+    if (z.mode === 'resize') {
+      const cs = corners(sh);
+      const opp = cs[(z.corner + 2) % 4];
+      const sgn = CORNER_SGN[z.corner];
+      drag = { mode: 'resize', anchor: { x: opp.x, y: opp.y }, hw0: sh.hw, hh0: sh.hh, rot0: sh.rot, sgnX: sgn[0], sgnY: sgn[1] };
+    } else if (z.mode === 'rotate') {
+      drag = { mode: 'rotate', startRot: sh.rot, startAng: (Math.atan2(p.y - sh.cy, p.x - sh.cx) * 180) / Math.PI };
+    } else if (z.mode === 'move') {
+      drag = { mode: 'move', offx: p.x - sh.cx, offy: p.y - sh.cy };
+    }
     if (!drag) return;
-    dragRef.current = drag;
-    const up = () => { dragRef.current = null; window.removeEventListener('pointermove', onMove); window.removeEventListener('pointerup', up); };
+    dragRef.current = drag; setDragMode(drag.mode);
+    const up = () => { dragRef.current = null; setDragMode(''); window.removeEventListener('pointermove', onMove); window.removeEventListener('pointerup', up); };
     window.addEventListener('pointermove', onMove); window.addEventListener('pointerup', up);
   };
 
@@ -211,9 +248,10 @@ export function FigAlign({ highScore, onExit }: { highScore: number; onExit: (sc
 
       <div className="fc-align-stage">
         <div className="fc-align-canvas">
-          <svg ref={svgRef} viewBox={`0 0 ${VB} ${VB}`} onPointerDown={onDown} style={{ touchAction: 'none', cursor: phase === 'dial' ? 'move' : 'default' }}>
+          <svg ref={svgRef} viewBox={`0 0 ${VB} ${VB}`} onPointerDown={onDown} onPointerMove={onHover} onPointerLeave={() => setHoverMode('')}
+            style={{ touchAction: 'none', cursor: zoneCursor(dragMode || hoverMode) }}>
             {phase === 'peek' && <BoxShape b={grown} fill={ACCENT} />}
-            {phase !== 'peek' && <BoxShape b={guess} fill={ACCENT} handles={phase === 'dial'} />}
+            {phase !== 'peek' && <BoxShape b={guess} fill={ACCENT} handles={phase === 'dial' && !!(dragMode || hoverMode)} />}
             {phase === 'result' && <BoxShape b={target} dashed />}
           </svg>
           {phase === 'peek' && <div className="fc-ct-ms fc-align-ms">{Math.max(0, ms)}<small>ms</small></div>}
