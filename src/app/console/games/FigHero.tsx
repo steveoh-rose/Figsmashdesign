@@ -60,6 +60,45 @@ function buzzer() {
   o.start(); o.stop(a.currentTime + 0.2);
 }
 
+// Looping 8-bit chiptune (lead square + triangle bass) via a lookahead scheduler.
+const midi = (n: number) => 440 * Math.pow(2, (n - 69) / 12);
+const MELODY = [69, 76, 72, 76, 74, 77, 81, 77, 67, 74, 71, 74, 76, 72, 69, 0];
+const BASS = [45, 45, 41, 41, 36, 36, 43, 43, 45, 45, 41, 41, 40, 40, 43, 43];
+function startMusic() {
+  const a = audio(); if (!a) return null;
+  try { a.resume(); } catch { /* */ }
+  const stepDur = 0.21; // ~140 BPM eighths
+  let step = 0, next = a.currentTime + 0.12;
+  const tone = (freq: number, t: number, dur: number, type: OscillatorType, vol: number) => {
+    const o = a.createOscillator(), g = a.createGain();
+    o.type = type; o.frequency.value = freq; o.connect(g); g.connect(a.destination);
+    g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.start(t); o.stop(t + dur);
+  };
+  const timer = window.setInterval(() => {
+    while (next < a.currentTime + 0.25) {
+      const m = MELODY[step % MELODY.length];
+      if (m) tone(midi(m), next, stepDur * 0.85, 'square', 0.06);
+      if (step % 2 === 0) { const b = BASS[step % BASS.length]; if (b) tone(midi(b), next, stepDur * 1.7, 'triangle', 0.09); }
+      next += stepDur; step++;
+    }
+  }, 45);
+  return { stop: () => window.clearInterval(timer) };
+}
+
+// Pixel tool-icon per lane (V=move, P=pen, T=text, R=rectangle).
+function ToolIcon({ lane }: { lane: number }) {
+  const c = '#14142a';
+  return (
+    <svg width="26" height="26" viewBox="0 0 24 24" style={{ imageRendering: 'pixelated' }} aria-hidden="true">
+      {lane === 0 && <path d="M5 3 L5 17.5 L9 13.5 L11.6 19 L13.7 18 L11.1 12.6 L16 12.6 Z" fill={c} stroke={c} strokeWidth="0.6" strokeLinejoin="round" />}
+      {lane === 1 && <><path d="M6.5 18 L14.5 5.5 L18 7.8 L10 20.3 Z" fill={c} /><path d="M6.5 18 L10 20.3 L5.6 21 Z" fill={c} /></>}
+      {lane === 2 && <path d="M5 5 H19 M12 5 V19 M9 19 H15" stroke={c} strokeWidth="2.4" strokeLinecap="square" fill="none" />}
+      {lane === 3 && <rect x="5" y="7" width="14" height="10" rx="1" fill="none" stroke={c} strokeWidth="2.4" />}
+    </svg>
+  );
+}
+
 export function FigHero({ highScore, onExit }: { highScore: number; onExit: (score: number, secondsPlayed: number) => void }) {
   const notesRef = useRef<Note[]>([]);
   const startRef = useRef<number>(0);
@@ -74,10 +113,11 @@ export function FigHero({ highScore, onExit }: { highScore: number; onExit: (sco
   const phaseRef = useRef(phase);
   phaseRef.current = phase;
 
-  // boot the chart + loop
+  // boot the chart + loop + music
   useEffect(() => {
     notesRef.current = buildChart();
     startRef.current = performance.now() / 1000 + 2.2; // 2.2s lead-in countdown
+    const music = startMusic();
     let raf = 0;
     const loop = () => {
       const now = performance.now() / 1000;
@@ -94,6 +134,7 @@ export function FigHero({ highScore, onExit }: { highScore: number; onExit: (sco
       }
       if (el > CHART_END + 1.4 && phaseRef.current !== 'done') {
         setPhase('done');
+        music?.stop();
         onExit(scoreRef.current, Math.max(0, Math.round(el)));
         return; // stop loop; parent unmounts
       }
@@ -101,7 +142,7 @@ export function FigHero({ highScore, onExit }: { highScore: number; onExit: (sco
       raf = requestAnimationFrame(loop);
     };
     raf = requestAnimationFrame(loop);
-    return () => cancelAnimationFrame(raf);
+    return () => { cancelAnimationFrame(raf); music?.stop(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -165,7 +206,7 @@ export function FigHero({ highScore, onExit }: { highScore: number; onExit: (sco
                   className={`fc-fh-note ${n.missed ? 'miss' : ''}`}
                   style={{ top: `${prog * 100}%`, background: l.color }}
                 >
-                  {l.label}
+                  <ToolIcon lane={li} />
                 </div>
               );
             })}
