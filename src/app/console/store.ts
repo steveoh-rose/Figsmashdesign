@@ -7,7 +7,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 const KEY = 'figconsole67.v1';
 
-export type CartridgeId = 'figsmash' | 'fighero' | 'figcontrast';
+export type CartridgeId = 'figsmash' | 'fighero' | 'figcontrast' | 'figalign';
 
 export interface ConsoleState {
   timeSavedSec: number;
@@ -16,7 +16,7 @@ export interface ConsoleState {
 
 const DEFAULT: ConsoleState = {
   timeSavedSec: 0,
-  highScores: { figsmash: 0, fighero: 0, figcontrast: 0 },
+  highScores: { figsmash: 0, fighero: 0, figcontrast: 0, figalign: 0 },
 };
 
 function load(): ConsoleState {

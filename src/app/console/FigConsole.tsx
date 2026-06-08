@@ -7,9 +7,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useClock, useConsole, type CartridgeId } from './store';
 import { CHARACTERS } from '../game/config';
-import { VoxelGhost, VoxelSmiley, VoxelEye } from './voxel';
+import { VoxelGhost, VoxelSmiley, VoxelEye, VoxelTriangle } from './voxel';
 import { FigHero } from './games/FigHero';
 import { FigContrast } from './games/FigContrast';
+import { FigAlign } from './games/FigAlign';
 
 /** A small pixel pointer cursor in a fighter's colour. */
 function CursorChip({ color }: { color: string }) {
@@ -49,7 +50,8 @@ interface Cart {
 const CARTS: Cart[] = [
   { id: 'figsmash', name: 'FigSmash', tag: 'BRAWLER', blurb: 'KO the Unaligned Stakeholder.', color: '#ef5d52', art: <VoxelGhost /> },
   { id: 'fighero', name: 'FigHero', tag: 'RHYTHM', blurb: 'Shortcut muscle-memory drill.', color: '#4d7cff', art: <VoxelSmiley /> },
-  { id: 'figcontrast', name: 'FigContrast', tag: 'CALIBRATE', blurb: 'Dial in the bit-crushed signal.', color: '#2ec4b6', art: <VoxelEye /> },
+  { id: 'figcontrast', name: 'FigContrast', tag: 'CALIBRATE', blurb: 'Memorise + rebuild the colour.', color: '#2ec4b6', art: <VoxelEye /> },
+  { id: 'figalign', name: 'FigAlign', tag: 'SHAPE', blurb: 'Memorise + rebuild the shape.', color: '#ff9f43', art: <VoxelTriangle /> },
 ];
 
 const SMASH_DESIGN = `data:image/svg+xml;utf8,${encodeURIComponent(
@@ -178,6 +180,9 @@ export function FigConsole() {
           )}
           {mode === 'game' && active === 'figcontrast' && (
             <FigContrast highScore={state.highScores.figcontrast} onExit={(s, t) => finishGame('figcontrast', s, t)} />
+          )}
+          {mode === 'game' && active === 'figalign' && (
+            <FigAlign highScore={state.highScores.figalign} onExit={(s, t) => finishGame('figalign', s, t)} />
           )}
 
           {mode === 'desktop' && (

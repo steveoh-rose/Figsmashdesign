@@ -57,3 +57,9 @@ const EYE = ['.........', '..ttttt..', '.ttttttt.', 'ttwwwwwtt', 'twwkkkwwt', 't
 export const VoxelEye = ({ size }: { size?: number }) => (
   <VoxelSprite grid={EYE} palette={{ t: C.teal, w: C.white, k: C.ink }} size={size} />
 );
+
+// FigAlign — a voxel triangle (the shape).
+const TRI = ['....o....', '....o....', '...ooo...', '...ooo...', '..ooooo..', '..ooooo..', '.ooooooo.', 'ooooooooo', 'ooooooooo'];
+export const VoxelTriangle = ({ size }: { size?: number }) => (
+  <VoxelSprite grid={TRI} palette={{ o: '#ff9f43' }} size={size} />
+);
