@@ -1,53 +1,42 @@
 /**
- * Cartridge 4 — FigAlign: a shape-memory calibration game in the same family as
- * FigContrast. A target polygon is shown while a millisecond timer ticks down
- * (clicking); it then hides and you recreate it from memory with Sides /
- * Rotation / Size sliders. Score /100 each round, five rounds make a total /500.
- * Original implementation — no external assets, code, or branding.
+ * Cartridge 4 — FigAlign: a transform-memory game. A target box animates out
+ * from the centre showing its position / size / rotation, then a millisecond
+ * timer ticks down (clicking) and it hides. You rebuild it by direct
+ * manipulation — drag the body to move, drag a corner to resize, drag just
+ * outside a corner to rotate. Score /100 each round, five rounds → total /500.
+ * Original implementation; no external assets, code, or branding.
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 const ROUNDS = 5;
 const PEEK_MS = 2600;
-const SIDES_MIN = 3, SIDES_MAX = 8;
-const SIZE_MIN = 0.45, SIZE_MAX = 1.0;
+const VB = 240;            // square viewBox
+const C = VB / 2;          // centre
+const MIN_H = 12, MAX_H = 95;
 
 type Phase = 'peek' | 'dial' | 'result' | 'done';
-interface Shape { sides: number; rot: number; size: number; } // rot 0-360, size 0.45-1
+interface Box { cx: number; cy: number; hw: number; hh: number; rot: number; } // rot deg
 
 function rand() { return Math.random(); }
-function newTarget(): Shape {
-  return {
-    sides: Math.round(SIDES_MIN + rand() * (SIDES_MAX - SIDES_MIN)),
-    rot: Math.round(rand() * 360),
-    size: SIZE_MIN + rand() * (SIZE_MAX - SIZE_MIN),
-  };
+function clamp(v: number, a: number, b: number) { return Math.max(a, Math.min(b, v)); }
+function newTarget(): Box {
+  return { cx: 55 + rand() * 130, cy: 55 + rand() * 130, hw: 22 + rand() * 30, hh: 22 + rand() * 30, rot: rand() * 180 };
 }
-function polyPoints(s: Shape, cx = 100, cy = 100, maxR = 78): string {
-  const n = Math.max(3, Math.round(s.sides));
-  const R = s.size * maxR;
-  const pts: string[] = [];
-  for (let i = 0; i < n; i++) {
-    const a = ((s.rot - 90 + (i * 360) / n) * Math.PI) / 180;
-    pts.push(`${(cx + R * Math.cos(a)).toFixed(1)},${(cy + R * Math.sin(a)).toFixed(1)}`);
-  }
-  return pts.join(' ');
+function rotPt(x: number, y: number, deg: number) { const a = (deg * Math.PI) / 180, c = Math.cos(a), s = Math.sin(a); return { x: x * c - y * s, y: x * s + y * c }; }
+function corners(b: Box) {
+  return ([[-1, -1], [1, -1], [1, 1], [-1, 1]] as const).map(([sx, sy]) => { const r = rotPt(sx * b.hw, sy * b.hh, b.rot); return { x: b.cx + r.x, y: b.cy + r.y }; });
 }
-// marker line from centre to first vertex, so rotation is unambiguous.
-function markerEnd(s: Shape, cx = 100, cy = 100, maxR = 78) {
-  const a = ((s.rot - 90) * Math.PI) / 180, R = s.size * maxR;
-  return { x: cx + R * Math.cos(a), y: cy + R * Math.sin(a) };
-}
-function scoreOf(t: Shape, g: Shape) {
-  const ds = Math.abs(Math.round(t.sides) - Math.round(g.sides));
-  const sidesScore = Math.max(0, 1 - ds / 2);
-  let dr = Math.abs(t.rot - g.rot) % 360; if (dr > 180) dr = 360 - dr;
-  const rotScore = 1 - dr / 180;
-  const sizeScore = 1 - Math.abs(t.size - g.size) / (SIZE_MAX - SIZE_MIN);
-  return Math.round(100 * Math.max(0, 0.4 * sidesScore + 0.3 * rotScore + 0.3 * sizeScore));
+function inside(b: Box, px: number, py: number) { const d = rotPt(px - b.cx, py - b.cy, -b.rot); return Math.abs(d.x) <= b.hw && Math.abs(d.y) <= b.hh; }
+function scoreOf(t: Box, g: Box) {
+  const posDist = Math.hypot(t.cx - g.cx, t.cy - g.cy);
+  const posScore = Math.max(0, 1 - posDist / 110);
+  const sizeScore = Math.max(0, 1 - (Math.abs(t.hw - g.hw) + Math.abs(t.hh - g.hh)) / 95);
+  let dr = (((t.rot - g.rot) % 180) + 180) % 180; if (dr > 90) dr = 180 - dr;
+  const rotScore = 1 - dr / 90;
+  return Math.round(100 * Math.max(0, 0.4 * posScore + 0.3 * sizeScore + 0.3 * rotScore));
 }
 
-// --- audio: chiptune + countdown click ---
+// --- audio ---
 let actx: AudioContext | null = null;
 function audio() { if (!actx) { try { actx = new (window.AudioContext || (window as any).webkitAudioContext)(); } catch { /* */ } } return actx; }
 function tone(freq: number, dur: number, type: OscillatorType = 'square', vol = 0.16) {
@@ -80,66 +69,104 @@ function startMusic() {
   return { stop: () => window.clearInterval(timer) };
 }
 
-function VSlider({ value, min, max, label, valueLabel, onChange, disabled }: { value: number; min: number; max: number; label: string; valueLabel: string; onChange: (v: number) => void; disabled?: boolean }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const set = (clientY: number) => {
-    const r = ref.current!.getBoundingClientRect();
-    const t = Math.max(0, Math.min(1, 1 - (clientY - r.top) / r.height));
-    onChange(min + t * (max - min));
-  };
-  const down = (e: React.PointerEvent) => {
-    if (disabled) return; e.preventDefault(); set(e.clientY);
-    const mv = (ev: PointerEvent) => set(ev.clientY);
-    const up = () => { document.removeEventListener('pointermove', mv); document.removeEventListener('pointerup', up); };
-    document.addEventListener('pointermove', mv); document.addEventListener('pointerup', up);
-  };
+const ACCENT = '#ff9f43';
+
+function BoxShape({ b, fill, dashed, handles }: { b: Box; fill?: string; dashed?: boolean; handles?: boolean }) {
   return (
-    <div className="fc-vs">
-      <span className="fc-vs-val">{valueLabel}</span>
-      <div className="fc-vs-track fc-vs-track-align" ref={ref} onPointerDown={down} style={{ opacity: disabled ? 0.5 : 1 }}>
-        <div className="fc-vs-knob" style={{ bottom: `${((value - min) / (max - min)) * 100}%` }} />
-      </div>
-      <span className="fc-vs-label">{label}</span>
-    </div>
+    <g transform={`translate(${b.cx} ${b.cy}) rotate(${b.rot})`}>
+      <rect x={-b.hw} y={-b.hh} width={b.hw * 2} height={b.hh * 2}
+        fill={fill || 'none'} stroke={dashed ? '#fff' : '#1c1c1c'} strokeWidth={dashed ? 2 : 3}
+        strokeDasharray={dashed ? '5 5' : undefined} opacity={dashed ? 0.85 : 1} />
+      {!dashed && <circle cx={0} cy={-b.hh} r={4} fill="#1c1c1c" />}
+      {handles && ([[-1, -1], [1, -1], [1, 1], [-1, 1]] as const).map(([sx, sy], i) => (
+        <rect key={i} x={sx * b.hw - 4} y={sy * b.hh - 4} width={8} height={8} fill="#fff" stroke="#1c1c1c" strokeWidth={1.5} />
+      ))}
+    </g>
   );
 }
 
 export function FigAlign({ highScore, onExit }: { highScore: number; onExit: (score: number, secondsPlayed: number) => void }) {
   const [round, setRound] = useState(1);
-  const [target, setTarget] = useState<Shape>(newTarget);
-  const [sides, setSides] = useState(5);
-  const [rot, setRot] = useState(0);
-  const [size, setSize] = useState(0.7);
+  const [target, setTarget] = useState<Box>(newTarget);
+  const [guess, setGuess] = useState<Box>({ cx: C, cy: C, hw: 38, hh: 38, rot: 0 });
   const [phase, setPhase] = useState<Phase>('peek');
   const [ms, setMs] = useState(PEEK_MS);
+  const [grow, setGrow] = useState(0);
   const [scores, setScores] = useState<number[]>([]);
   const [lastScore, setLastScore] = useState(0);
 
-  const refs = useRef({ phase, target, sides, rot, size, round });
-  refs.current = { phase, target, sides, rot, size, round };
+  const svgRef = useRef<SVGSVGElement>(null);
+  const guessRef = useRef(guess); guessRef.current = guess;
+  const refs = useRef({ phase, target, round }); refs.current = { phase, target, round };
+  const dragRef = useRef<any>(null);
   const startRef = useRef(performance.now() / 1000);
 
   useEffect(() => { const m = startMusic(); return () => m?.stop(); }, []);
 
+  // peek: animate target out from centre, tick ms, click
   useEffect(() => {
     if (phase !== 'peek') return;
-    setMs(PEEK_MS); let left = PEEK_MS; click();
-    const iv = window.setInterval(() => {
-      left -= 100; setMs(left); click();
-      if (left <= 0) { window.clearInterval(iv); setPhase('dial'); tone(760, 0.16, 'square', 0.16); }
-    }, 100);
-    return () => window.clearInterval(iv);
+    let raf = 0; const t0 = performance.now(); let lastClick = -1; click();
+    const tick = () => {
+      const el = performance.now() - t0; const left = PEEK_MS - el;
+      setMs(Math.max(0, Math.round(left)));
+      setGrow(Math.min(1, el / 450));
+      const ci = Math.floor(el / 110); if (ci !== lastClick) { lastClick = ci; if (left > 0) click(); }
+      if (left <= 0) { setPhase('dial'); tone(760, 0.16, 'square', 0.16); return; }
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
   }, [phase, round]);
+
+  const toVB = (clientX: number, clientY: number) => {
+    const r = svgRef.current!.getBoundingClientRect();
+    return { x: ((clientX - r.left) / r.width) * VB, y: ((clientY - r.top) / r.height) * VB };
+  };
+
+  const onMove = useCallback((ev: PointerEvent) => {
+    const drag = dragRef.current; if (!drag) return;
+    const p = toVB(ev.clientX, ev.clientY);
+    const sh = { ...guessRef.current };
+    if (drag.mode === 'move') { sh.cx = clamp(p.x - drag.offx, 8, VB - 8); sh.cy = clamp(p.y - drag.offy, 8, VB - 8); }
+    else if (drag.mode === 'rotate') { const ang = (Math.atan2(p.y - sh.cy, p.x - sh.cx) * 180) / Math.PI; sh.rot = drag.startRot + (ang - drag.startAng); }
+    else if (drag.mode === 'resize') {
+      const a = drag.anchor, u = rotPt(1, 0, sh.rot), v = rotPt(0, 1, sh.rot);
+      const dx = p.x - a.x, dy = p.y - a.y, du = dx * u.x + dy * u.y, dv = dx * v.x + dy * v.y;
+      const su = du >= 0 ? 1 : -1, sv = dv >= 0 ? 1 : -1;
+      sh.hw = clamp(Math.abs(du) / 2, MIN_H, MAX_H); sh.hh = clamp(Math.abs(dv) / 2, MIN_H, MAX_H);
+      sh.cx = a.x + u.x * su * sh.hw + v.x * sv * sh.hh; sh.cy = a.y + u.y * su * sh.hw + v.y * sv * sh.hh;
+    }
+    setGuess(sh);
+  }, []);
+
+  const onDown = (e: React.PointerEvent) => {
+    if (refs.current.phase !== 'dial') return;
+    e.preventDefault();
+    const p = toVB(e.clientX, e.clientY);
+    const sh = guessRef.current;
+    const cs = corners(sh);
+    let best = 0, bd = 1e9; cs.forEach((c, i) => { const d = Math.hypot(c.x - p.x, c.y - p.y); if (d < bd) { bd = d; best = i; } });
+    let drag: any = null;
+    if (bd <= 14) { const opp = cs[(best + 2) % 4]; drag = { mode: 'resize', anchor: { x: opp.x, y: opp.y } }; }
+    else if (bd <= 32 && !inside(sh, p.x, p.y)) { drag = { mode: 'rotate', startRot: sh.rot, startAng: (Math.atan2(p.y - sh.cy, p.x - sh.cx) * 180) / Math.PI }; }
+    else if (inside(sh, p.x, p.y)) { drag = { mode: 'move', offx: p.x - sh.cx, offy: p.y - sh.cy }; }
+    if (!drag) return;
+    dragRef.current = drag;
+    const up = () => { dragRef.current = null; window.removeEventListener('pointermove', onMove); window.removeEventListener('pointerup', up); };
+    window.addEventListener('pointermove', onMove); window.addEventListener('pointerup', up);
+  };
 
   const submit = useCallback(() => {
     const r = refs.current;
     if (r.phase !== 'dial') return;
-    const sc = scoreOf(r.target, { sides: r.sides, rot: r.rot, size: r.size });
+    const sc = scoreOf(r.target, guessRef.current);
     setLastScore(sc); setScores((arr) => [...arr, sc]); setPhase('result');
     tone(sc >= 80 ? 1100 : sc >= 50 ? 760 : 480, 0.16, 'square', 0.16);
     window.setTimeout(() => {
       if (r.round >= ROUNDS) { setPhase('done'); return; }
-      setRound((x) => x + 1); setTarget(newTarget()); setSides(5); setRot(0); setSize(0.7); setPhase('peek');
+      setRound((x) => x + 1); setTarget(newTarget());
+      setGuess({ cx: C, cy: C, hw: 38, hh: 38, rot: 0 }); setGrow(0); setPhase('peek');
     }, 1700);
   }, []);
   const submitRef = useRef(submit); submitRef.current = submit;
@@ -158,12 +185,7 @@ export function FigAlign({ highScore, onExit }: { highScore: number; onExit: (sc
     return () => window.clearTimeout(id);
   }, [phase, total, onExit]);
 
-  const showTarget = phase === 'peek';
-  const guess: Shape = { sides, rot, size };
-  const shown = showTarget ? target : guess;
-  const accent = '#ff9f43';
   const scoreCol = (n: number) => (n >= 80 ? '#6cc36a' : n >= 50 ? '#ffce3a' : '#ef5d52');
-  const mEnd = markerEnd(shown);
 
   if (phase === 'done') {
     return (
@@ -176,6 +198,9 @@ export function FigAlign({ highScore, onExit }: { highScore: number; onExit: (sc
     );
   }
 
+  // target shown during peek, growing out of the centre
+  const grown: Box = { cx: C + (target.cx - C) * grow, cy: C + (target.cy - C) * grow, hw: target.hw * grow, hh: target.hh * grow, rot: target.rot };
+
   return (
     <div className="fc-contrast">
       <div className="fc-fh-hud">
@@ -184,18 +209,12 @@ export function FigAlign({ highScore, onExit }: { highScore: number; onExit: (sc
         <span>HI <b>{Math.max(highScore, total).toString().padStart(3, '0')}</b></span>
       </div>
 
-      <div className="fc-ct-main">
-        <div className="fc-ct-sliders-v">
-          <VSlider label="SIDES" valueLabel={String(Math.round(sides))} value={sides} min={SIDES_MIN} max={SIDES_MAX} onChange={(x) => setSides(Math.round(x))} disabled={showTarget} />
-          <VSlider label="ROT" valueLabel={`${Math.round(rot)}°`} value={rot} min={0} max={360} onChange={setRot} disabled={showTarget} />
-          <VSlider label="SIZE" valueLabel={`${Math.round(size * 100)}`} value={size} min={SIZE_MIN} max={SIZE_MAX} onChange={setSize} disabled={showTarget} />
-        </div>
-        <div className="fc-ct-big fc-align-big">
-          <svg viewBox="0 0 200 200" width="100%" height="100%" style={{ display: 'block' }}>
-            {phase === 'result' && <polygon points={polyPoints(target)} fill="none" stroke="#ffffff" strokeWidth={2} strokeDasharray="5 5" opacity={0.85} />}
-            <polygon points={polyPoints(shown)} fill={accent} stroke="#1c1c1c" strokeWidth={3} />
-            <line x1={100} y1={100} x2={mEnd.x} y2={mEnd.y} stroke="#1c1c1c" strokeWidth={3} />
-            <circle cx={mEnd.x} cy={mEnd.y} r={5} fill="#1c1c1c" />
+      <div className="fc-align-stage">
+        <div className="fc-align-canvas">
+          <svg ref={svgRef} viewBox={`0 0 ${VB} ${VB}`} onPointerDown={onDown} style={{ touchAction: 'none', cursor: phase === 'dial' ? 'move' : 'default' }}>
+            {phase === 'peek' && <BoxShape b={grown} fill={ACCENT} />}
+            {phase !== 'peek' && <BoxShape b={guess} fill={ACCENT} handles={phase === 'dial'} />}
+            {phase === 'result' && <BoxShape b={target} dashed />}
           </svg>
           {phase === 'peek' && <div className="fc-ct-ms fc-align-ms">{Math.max(0, ms)}<small>ms</small></div>}
           {phase === 'result' && <div className="fc-ct-roundscore fc-align-score" style={{ color: scoreCol(lastScore) }}>{lastScore}<small>/100</small></div>}
@@ -203,10 +222,10 @@ export function FigAlign({ highScore, onExit }: { highScore: number; onExit: (sc
       </div>
 
       <div className="fc-ct-bottom">
-        <span className="fc-ct-instr">{showTarget ? 'MEMORISE THE SHAPE…' : 'dial SIDES · ROT · SIZE'}</span>
+        <span className="fc-ct-instr">{phase === 'peek' ? 'MEMORISE THE BOX…' : 'drag · corner = resize · outside corner = rotate'}</span>
         <button className="fc-ct-submit" onClick={() => submitRef.current()} disabled={phase !== 'dial'} title="Lock in (Enter)">◎</button>
       </div>
-      <div className="fc-fh-foot">memorise, then rebuild the shape · ⏎ lock in · ⎋ eject</div>
+      <div className="fc-fh-foot">memorise, then rebuild the box · ⏎ lock in · ⎋ eject</div>
     </div>
   );
 }
