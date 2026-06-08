@@ -1,76 +1,82 @@
 /**
- * Cartridge 3 — FigContrast: bit-crushed calibration. A pixel scene is thrown
- * out of whack (brightness / saturation / hue). Dial the sliders to neutralise
- * it. Closer + faster = bigger score. Five rounds.
+ * Cartridge 3 — FigContrast: a "dial in the colour" calibration game. A target
+ * colour fills one half of a swatch; dial the R / G / B sliders until your half
+ * matches and the seam disappears. Closer + faster = more points. Five rounds.
  */
 import { useEffect, useRef, useState } from 'react';
 
 const ROUNDS = 5;
 
-// A small colourful pixel scene as a crisp dataURL.
-const SCENE = `data:image/svg+xml;utf8,${encodeURIComponent(
-  `<svg xmlns='http://www.w3.org/2000/svg' width='16' height='12' shape-rendering='crispEdges'>
-    <rect width='16' height='12' fill='#3a7d8c'/>
-    <rect y='8' width='16' height='4' fill='#5a9b4a'/>
-    <rect x='2' y='4' width='3' height='4' fill='#d24b3e'/>
-    <rect x='2' y='3' width='3' height='1' fill='#e6c64a'/>
-    <rect x='10' y='5' width='4' height='3' fill='#b06cd9'/>
-    <circle cx='13' cy='2' r='1.5' fill='#e6c64a'/>
-    <rect x='6' y='6' width='2' height='2' fill='#f3edc8'/>
-  </svg>`
-)}`;
+interface RGB { r: number; g: number; b: number; }
 
-function rand(a: number, b: number) { return a + Math.random() * (b - a); }
-
-interface Distort { b: number; s: number; h: number; }
-function newDistort(): Distort {
-  return { b: rand(0.55, 1.7), s: rand(0.2, 2.0), h: rand(-70, 70) };
+function rint(max: number) { return Math.floor(Math.random() * max); }
+function hsl2rgb(h: number, s: number, l: number): RGB {
+  h /= 360;
+  const a = s * Math.min(l, 1 - l);
+  const f = (n: number) => {
+    const k = (n + h * 12) % 12;
+    return Math.round(255 * (l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1))));
+  };
+  return { r: f(0), g: f(8), b: f(4) };
 }
+// Pleasant, mid-tone targets (random hue, decent saturation/lightness).
+function newTarget(): RGB { return hsl2rgb(rint(360), 0.45 + Math.random() * 0.45, 0.36 + Math.random() * 0.34); }
+
+const css = (c: RGB) => `rgb(${c.r},${c.g},${c.b})`;
 
 export function FigContrast({ highScore, onExit }: { highScore: number; onExit: (score: number, secondsPlayed: number) => void }) {
   const [round, setRound] = useState(1);
-  const [distort, setDistort] = useState<Distort>(newDistort);
-  const [sb, setSb] = useState(1); // brightness slider
-  const [ss, setSs] = useState(1); // saturation slider
-  const [sh, setSh] = useState(0); // hue slider
+  const [target, setTarget] = useState<RGB>(newTarget);
+  const [r, setR] = useState(128);
+  const [g, setG] = useState(128);
+  const [b, setB] = useState(128);
   const [score, setScore] = useState(0);
-  const [last, setLast] = useState<{ acc: number; pts: number } | null>(null);
+  const [reveal, setReveal] = useState<{ acc: number; pts: number } | null>(null);
   const [done, setDone] = useState(false);
   const startRef = useRef(performance.now() / 1000);
   const roundStartRef = useRef(performance.now() / 1000);
+  const revealRef = useRef(false);
 
-  const netB = distort.b * sb;
-  const netS = distort.s * ss;
-  const netH = distort.h + sh;
-  const filter = `brightness(${netB}) saturate(${netS}) hue-rotate(${netH}deg)`;
+  const guess: RGB = { r, g, b };
 
   const lockIn = () => {
-    const bErr = Math.abs(netB - 1), sErr = Math.abs(netS - 1), hErr = Math.abs(netH) / 180;
-    const err = (bErr + sErr + hErr) / 3;
-    const acc = Math.max(0, 1 - err * 1.5);
+    if (revealRef.current) return;
+    revealRef.current = true;
+    const avg = (Math.abs(r - target.r) + Math.abs(g - target.g) + Math.abs(b - target.b)) / 3;
+    const acc = Math.max(0, 1 - avg / 64); // within ~6/channel ≈ 90%
     const t = performance.now() / 1000 - roundStartRef.current;
-    const speed = Math.max(0, Math.round(280 - t * 28));
+    const speed = Math.max(0, Math.round(250 - t * 22));
     const pts = Math.round(acc * 1000) + speed;
     setScore((s) => s + pts);
-    setLast({ acc, pts });
-    if (round >= ROUNDS) {
-      setDone(true);
-    } else {
-      setTimeout(() => {
-        setRound((r) => r + 1);
-        setDistort(newDistort());
-        setSb(1); setSs(1); setSh(0); setLast(null);
-        roundStartRef.current = performance.now() / 1000;
-      }, 1100);
-    }
+    setReveal({ acc, pts });
+    window.setTimeout(() => {
+      if (round >= ROUNDS) { setDone(true); return; }
+      setRound((rd) => rd + 1);
+      setTarget(newTarget());
+      setR(128); setG(128); setB(128);
+      setReveal(null);
+      revealRef.current = false;
+      roundStartRef.current = performance.now() / 1000;
+    }, 1500);
   };
+
+  // Enter locks in.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Enter') { e.preventDefault(); lockIn(); } };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [r, g, b, round]);
 
   useEffect(() => {
     if (!done) return;
     const secs = Math.round(performance.now() / 1000 - startRef.current);
-    const id = setTimeout(() => onExit(score, secs), 50);
-    return () => clearTimeout(id);
+    const id = window.setTimeout(() => onExit(score, secs), 60);
+    return () => window.clearTimeout(id);
   }, [done, score, onExit]);
+
+  const revColor = reveal ? (reveal.acc > 0.9 ? '#6cc36a' : reveal.acc > 0.7 ? '#ffce3a' : '#ef5d52') : '#fff';
+  const revLabel = reveal ? (reveal.acc > 0.96 ? 'DIALED!' : reveal.acc > 0.85 ? 'SHARP' : reveal.acc > 0.6 ? 'CLOSE' : 'OFF') : '';
 
   return (
     <div className="fc-contrast">
@@ -81,31 +87,24 @@ export function FigContrast({ highScore, onExit }: { highScore: number; onExit: 
       </div>
 
       <div className="fc-ct-stage">
-        <div className="fc-ct-pair">
-          <div className="fc-ct-cell">
-            <img src={SCENE} alt="target" className="fc-ct-img" />
-            <span>TARGET</span>
-          </div>
-          <div className="fc-ct-cell">
-            <img src={SCENE} alt="yours" className="fc-ct-img" style={{ filter }} />
-            <span>SIGNAL</span>
-          </div>
+        <div className="fc-ct-swatch">
+          <div className="fc-ct-half" style={{ background: css(target) }} />
+          <div className="fc-ct-half" style={{ background: css(guess) }} />
+          {reveal && (
+            <div className="fc-ct-readout" style={{ color: revColor }}>{revLabel} {Math.round(reveal.acc * 100)}% &nbsp;+{reveal.pts}</div>
+          )}
         </div>
-        {last && (
-          <div className="fc-ct-result" style={{ color: last.acc > 0.85 ? '#6cc36a' : last.acc > 0.6 ? '#e7b53c' : '#d94f3d' }}>
-            {last.acc > 0.92 ? 'CALIBRATED!' : last.acc > 0.7 ? 'CLOSE' : 'OFF'} +{last.pts}
-          </div>
-        )}
+        <div className="fc-ct-hint">{reveal ? 'target ◂ ▸ yours' : 'dial R / G / B until the seam disappears'}</div>
       </div>
 
       <div className="fc-ct-sliders">
-        <label>BRIGHT<input type="range" min={0.4} max={2.2} step={0.01} value={sb} onChange={(e) => setSb(+e.target.value)} /></label>
-        <label>SATUR<input type="range" min={0.1} max={2.4} step={0.01} value={ss} onChange={(e) => setSs(+e.target.value)} /></label>
-        <label>HUE<input type="range" min={-90} max={90} step={1} value={sh} onChange={(e) => setSh(+e.target.value)} /></label>
+        <label style={{ ['--chc' as string]: '#ef5d52' }}><span className="ch">R</span><input type="range" min={0} max={255} value={r} onChange={(e) => setR(+e.target.value)} /><span className="val">{r}</span></label>
+        <label style={{ ['--chc' as string]: '#6cc36a' }}><span className="ch">G</span><input type="range" min={0} max={255} value={g} onChange={(e) => setG(+e.target.value)} /><span className="val">{g}</span></label>
+        <label style={{ ['--chc' as string]: '#4d7cff' }}><span className="ch">B</span><input type="range" min={0} max={255} value={b} onChange={(e) => setB(+e.target.value)} /><span className="val">{b}</span></label>
       </div>
 
-      <button className="fc-btn fc-btn-gold fc-ct-lock" onClick={lockIn} disabled={!!last && !done}>LOCK IN ▶</button>
-      <div className="fc-fh-foot">drag the sliders until SIGNAL matches TARGET · ⎋ eject</div>
+      <button className="fc-btn fc-btn-gold fc-ct-lock" onClick={lockIn} disabled={!!reveal}>LOCK IN ▶</button>
+      <div className="fc-fh-foot">drag <b>R G B</b> to match · ⏎ lock in · ⎋ eject</div>
     </div>
   );
 }
