@@ -1,28 +1,34 @@
 /**
- * Cartridge 3 — FigContrast: a timed "dial in the colour" game. A target colour
- * fills the swatch; your live mix is the thick frame around it. Beat the
- * per-round countdown to make the frame vanish into the fill. Music + 3-2-1
- * start. Scored on accuracy + time left, five rounds.
+ * Cartridge 3 — FigContrast: a colour-memory calibration game.
+ * A target colour is shown while a millisecond timer ticks down (clicking).
+ * Then it hides and you recreate it with Hue / Saturation / Brightness sliders.
+ * Score /100 each round; five rounds make a total /500. Built from scratch.
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 const ROUNDS = 5;
-const ROUND_TIME = 15; // seconds per colour
+const PEEK_MS = 2600; // how long the target is shown
 
-interface RGB { r: number; g: number; b: number; }
-type Phase = 'ready' | 'play' | 'reveal' | 'done';
+type Phase = 'peek' | 'dial' | 'result' | 'done';
+interface HSV { h: number; s: number; v: number; } // h 0-360, s/v 0-1
 
-function rint(max: number) { return Math.floor(Math.random() * max); }
-function hsl2rgb(h: number, s: number, l: number): RGB {
-  h /= 360;
-  const a = s * Math.min(l, 1 - l);
-  const f = (n: number) => { const k = (n + h * 12) % 12; return Math.round(255 * (l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1)))); };
-  return { r: f(0), g: f(8), b: f(4) };
+function rand() { return Math.random(); }
+function newTarget(): HSV { return { h: rand() * 360, s: 0.4 + rand() * 0.6, v: 0.35 + rand() * 0.6 }; }
+function hsv2rgb({ h, s, v }: HSV) {
+  const c = v * s, x = c * (1 - Math.abs(((h / 60) % 2) - 1)), m = v - c;
+  let r = 0, g = 0, b = 0;
+  if (h < 60) { r = c; g = x; } else if (h < 120) { r = x; g = c; } else if (h < 180) { g = c; b = x; }
+  else if (h < 240) { g = x; b = c; } else if (h < 300) { r = x; b = c; } else { r = c; b = x; }
+  return { r: Math.round((r + m) * 255), g: Math.round((g + m) * 255), b: Math.round((b + m) * 255) };
 }
-function newTarget(): RGB { return hsl2rgb(rint(360), 0.45 + Math.random() * 0.45, 0.36 + Math.random() * 0.34); }
-const css = (c: RGB) => `rgb(${c.r},${c.g},${c.b})`;
+const css = (hsv: HSV) => { const c = hsv2rgb(hsv); return `rgb(${c.r},${c.g},${c.b})`; };
+function scoreOf(target: HSV, guess: HSV) {
+  const a = hsv2rgb(target), b = hsv2rgb(guess);
+  const d = Math.sqrt((a.r - b.r) ** 2 + (a.g - b.g) ** 2 + (a.b - b.b) ** 2);
+  return Math.round(100 * Math.max(0, 1 - d / 255));
+}
 
-// --- tiny chiptune ---
+// --- audio: chiptune loop + countdown click ---
 let actx: AudioContext | null = null;
 function audio() { if (!actx) { try { actx = new (window.AudioContext || (window as any).webkitAudioContext)(); } catch { /* */ } } return actx; }
 function tone(freq: number, dur: number, type: OscillatorType = 'square', vol = 0.16) {
@@ -32,6 +38,7 @@ function tone(freq: number, dur: number, type: OscillatorType = 'square', vol = 
   g.gain.setValueAtTime(vol, a.currentTime); g.gain.exponentialRampToValueAtTime(0.0001, a.currentTime + dur);
   o.start(); o.stop(a.currentTime + dur);
 }
+function click() { tone(1500, 0.018, 'square', 0.09); }
 const midi = (n: number) => 440 * Math.pow(2, (n - 69) / 12);
 const MEL = [64, 67, 71, 67, 69, 72, 76, 72, 62, 65, 69, 65, 67, 64, 60, 0];
 const BASS = [40, 40, 43, 43, 36, 36, 41, 41, 40, 40, 43, 43, 38, 38, 41, 41];
@@ -46,130 +53,149 @@ function startMusic() {
   };
   const timer = window.setInterval(() => {
     while (next < a.currentTime + 0.25) {
-      const m = MEL[step % MEL.length]; if (m) t2(midi(m), next, stepDur * 0.85, 'square', 0.05);
-      if (step % 2 === 0) { const b = BASS[step % BASS.length]; if (b) t2(midi(b), next, stepDur * 1.7, 'triangle', 0.08); }
+      const m = MEL[step % MEL.length]; if (m) t2(midi(m), next, stepDur * 0.85, 'square', 0.045);
+      if (step % 2 === 0) { const b = BASS[step % BASS.length]; if (b) t2(midi(b), next, stepDur * 1.7, 'triangle', 0.07); }
       next += stepDur; step++;
     }
   }, 45);
   return { stop: () => window.clearInterval(timer) };
 }
 
+// Custom vertical slider with a gradient track + white knob.
+function VSlider({ value, max, gradient, label, onChange, disabled }: { value: number; max: number; gradient: string; label: string; onChange: (v: number) => void; disabled?: boolean }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const set = (clientY: number) => {
+    const r = ref.current!.getBoundingClientRect();
+    const t = Math.max(0, Math.min(1, 1 - (clientY - r.top) / r.height));
+    onChange(t * max);
+  };
+  const down = (e: React.PointerEvent) => {
+    if (disabled) return;
+    e.preventDefault(); set(e.clientY);
+    const mv = (ev: PointerEvent) => set(ev.clientY);
+    const up = () => { document.removeEventListener('pointermove', mv); document.removeEventListener('pointerup', up); };
+    document.addEventListener('pointermove', mv); document.addEventListener('pointerup', up);
+  };
+  return (
+    <div className="fc-vs">
+      <div className="fc-vs-track" ref={ref} onPointerDown={down} style={{ backgroundImage: gradient, opacity: disabled ? 0.5 : 1 }}>
+        <div className="fc-vs-knob" style={{ bottom: `${(value / max) * 100}%` }} />
+      </div>
+      <span className="fc-vs-label">{label}</span>
+    </div>
+  );
+}
+
+const HUE_GRAD = 'linear-gradient(to top,#ff0040,#ff00d4,#7b00ff,#0062ff,#00e0ff,#00ff66,#d4ff00,#ff7b00,#ff0040)';
+
 export function FigContrast({ highScore, onExit }: { highScore: number; onExit: (score: number, secondsPlayed: number) => void }) {
   const [round, setRound] = useState(1);
-  const [target, setTarget] = useState<RGB>(newTarget);
-  const [r, setR] = useState(128);
-  const [g, setG] = useState(128);
-  const [b, setB] = useState(128);
-  const [score, setScore] = useState(0);
-  const [reveal, setReveal] = useState<{ acc: number; pts: number } | null>(null);
-  const [phase, setPhase] = useState<Phase>('ready');
-  const [timeLeft, setTimeLeft] = useState(ROUND_TIME);
-  const [count, setCount] = useState(3);
+  const [target, setTarget] = useState<HSV>(newTarget);
+  const [h, setH] = useState(200);
+  const [s, setS] = useState(0.5);
+  const [v, setV] = useState(0.5);
+  const [phase, setPhase] = useState<Phase>('peek');
+  const [ms, setMs] = useState(PEEK_MS);
+  const [scores, setScores] = useState<number[]>([]);
+  const [lastScore, setLastScore] = useState(0);
 
-  const refs = useRef({ r, g, b, target, round, phase, timeLeft });
-  refs.current = { r, g, b, target, round, phase, timeLeft };
+  const refs = useRef({ phase, target, h, s, v, round });
+  refs.current = { phase, target, h, s, v, round };
   const startRef = useRef(performance.now() / 1000);
 
-  const lockIn = useCallback(() => {
-    const s = refs.current;
-    if (s.phase !== 'play') return;
-    setPhase('reveal');
-    const avg = (Math.abs(s.r - s.target.r) + Math.abs(s.g - s.target.g) + Math.abs(s.b - s.target.b)) / 3;
-    const acc = Math.max(0, 1 - avg / 64);
-    const bonus = Math.round(Math.max(0, s.timeLeft) * 22);
-    const pts = Math.round(acc * 1000) + bonus;
-    setScore((v) => v + pts);
-    setReveal({ acc, pts });
-    tone(acc > 0.85 ? 1100 : 560, 0.14, 'square', 0.16);
-    window.setTimeout(() => {
-      if (s.round >= ROUNDS) { setPhase('done'); return; }
-      setRound((v) => v + 1);
-      setTarget(newTarget());
-      setR(128); setG(128); setB(128);
-      setReveal(null);
-      setTimeLeft(ROUND_TIME);
-      setPhase('play');
-    }, 1500);
-  }, []);
-  const lockRef = useRef(lockIn);
-  lockRef.current = lockIn;
+  // music for the whole session
+  useEffect(() => { const m = startMusic(); return () => m?.stop(); }, []);
 
-  // 3-2-1 start + music.
+  // peek countdown (per round)
   useEffect(() => {
-    const music = startMusic();
-    let n = 3;
-    setCount(3); tone(520, 0.1);
-    const ticker = window.setInterval(() => {
-      n -= 1;
-      if (n <= 0) { window.clearInterval(ticker); setCount(0); tone(840, 0.2, 'square', 0.18); setPhase('play'); setTimeLeft(ROUND_TIME); }
-      else { setCount(n); tone(520, 0.1); }
-    }, 800);
-    return () => { window.clearInterval(ticker); music?.stop(); };
-  }, []);
-
-  // per-round countdown
-  useEffect(() => {
+    if (phase !== 'peek') return;
+    setMs(PEEK_MS);
+    let left = PEEK_MS;
+    click();
     const iv = window.setInterval(() => {
-      if (refs.current.phase !== 'play') return;
-      setTimeLeft((tl) => {
-        const next = tl - 0.1;
-        if (next <= 0) { lockRef.current(); return 0; }
-        if (next <= 3 && Math.ceil(next) !== Math.ceil(tl)) tone(440, 0.06, 'square', 0.12);
-        return next;
-      });
+      left -= 100; setMs(left); click();
+      if (left <= 0) { window.clearInterval(iv); setPhase('dial'); tone(760, 0.16, 'square', 0.16); }
     }, 100);
     return () => window.clearInterval(iv);
-  }, []);
+  }, [phase, round]);
 
-  // keyboard: Enter locks in
+  const submit = useCallback(() => {
+    const r = refs.current;
+    if (r.phase !== 'dial') return;
+    const sc = scoreOf(r.target, { h: r.h, s: r.s, v: r.v });
+    setLastScore(sc);
+    setScores((arr) => [...arr, sc]);
+    setPhase('result');
+    tone(sc >= 80 ? 1100 : sc >= 50 ? 760 : 480, 0.16, 'square', 0.16);
+    window.setTimeout(() => {
+      if (r.round >= ROUNDS) { setPhase('done'); return; }
+      setRound((x) => x + 1);
+      setTarget(newTarget());
+      setH(200); setS(0.5); setV(0.5);
+      setPhase('peek');
+    }, 1600);
+  }, []);
+  const submitRef = useRef(submit); submitRef.current = submit;
+
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Enter') { e.preventDefault(); lockRef.current(); } };
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Enter') { e.preventDefault(); submitRef.current(); } };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
+  const total = scores.reduce((a, b) => a + b, 0);
   useEffect(() => {
     if (phase !== 'done') return;
     const secs = Math.round(performance.now() / 1000 - startRef.current);
-    const id = window.setTimeout(() => onExit(score, secs), 60);
+    const id = window.setTimeout(() => onExit(total, secs), 1800);
     return () => window.clearTimeout(id);
-  }, [phase, score, onExit]);
+  }, [phase, total, onExit]);
 
-  const guess: RGB = { r, g, b };
-  const revColor = reveal ? (reveal.acc > 0.9 ? '#6cc36a' : reveal.acc > 0.7 ? '#ffce3a' : '#ef5d52') : '#fff';
-  const revLabel = reveal ? (reveal.acc > 0.96 ? 'DIALED!' : reveal.acc > 0.85 ? 'SHARP' : reveal.acc > 0.6 ? 'CLOSE' : 'OFF') : '';
-  const pct = Math.max(0, Math.min(100, (timeLeft / ROUND_TIME) * 100));
-  const low = timeLeft <= 4;
+  const guess: HSV = { h, s, v };
+  const showTarget = phase === 'peek';
+  const bigColor = showTarget ? css(target) : css(guess);
+  const satGrad = `linear-gradient(to top, ${css({ h, s: 0, v })}, ${css({ h, s: 1, v })})`;
+  const valGrad = `linear-gradient(to top, #000, ${css({ h, s, v: 1 })})`;
+  const scoreCol = (n: number) => (n >= 80 ? '#6cc36a' : n >= 50 ? '#ffce3a' : '#ef5d52');
+
+  if (phase === 'done') {
+    return (
+      <div className="fc-contrast fc-ct-done">
+        <div className="fc-ct-donetitle">CALIBRATION COMPLETE</div>
+        <div className="fc-ct-dotrow">
+          {scores.map((n, i) => <span key={i} className="fc-ct-dot" style={{ color: scoreCol(n) }}>{n}</span>)}
+        </div>
+        <div className="fc-ct-total" style={{ color: scoreCol(total / ROUNDS) }}>{total}<small> / {ROUNDS * 100}</small></div>
+        {total > highScore && <div className="fc-ct-best">★ NEW BEST ★</div>}
+      </div>
+    );
+  }
 
   return (
     <div className="fc-contrast">
       <div className="fc-fh-hud">
         <span>ROUND <b>{Math.min(round, ROUNDS)}/{ROUNDS}</b></span>
-        <span>SCORE <b>{score.toString().padStart(6, '0')}</b></span>
-        <span>HI <b>{Math.max(highScore, score).toString().padStart(6, '0')}</b></span>
+        <span>TOTAL <b>{total.toString().padStart(3, '0')}</b></span>
+        <span>HI <b>{Math.max(highScore, total).toString().padStart(3, '0')}</b></span>
       </div>
 
-      <div className="fc-ct-timer">
-        <div className="fc-ct-timebar"><div className="fc-ct-timefill" style={{ width: `${pct}%`, background: low ? '#ef5d52' : '#ffce3a' }} /></div>
-        <span className="fc-ct-timenum" style={{ color: low ? '#ef5d52' : '#fff' }}>{Math.ceil(timeLeft)}s</span>
-      </div>
-
-      <div className="fc-ct-stage">
-        <div className="fc-ct-swatch" style={{ background: css(target), borderColor: css(guess) }}>
-          {phase === 'ready' && <div className="fc-ct-count">{count > 0 ? count : 'GO!'}</div>}
-          {reveal && <div className="fc-ct-readout" style={{ color: revColor }}>{revLabel} {Math.round(reveal.acc * 100)}% &nbsp;+{reveal.pts}</div>}
+      <div className="fc-ct-main">
+        <div className="fc-ct-sliders-v">
+          <VSlider label="H" value={h} max={360} gradient={HUE_GRAD} onChange={setH} disabled={showTarget} />
+          <VSlider label="S" value={s} max={1} gradient={satGrad} onChange={setS} disabled={showTarget} />
+          <VSlider label="V" value={v} max={1} gradient={valGrad} onChange={setV} disabled={showTarget} />
         </div>
-        <div className="fc-ct-hint">make the frame vanish into the fill before time runs out</div>
+        <div className="fc-ct-big" style={{ background: bigColor }}>
+          {phase === 'peek' && <div className="fc-ct-ms">{Math.max(0, ms)}<small>ms</small></div>}
+          {phase === 'result' && <div className="fc-ct-roundscore" style={{ color: scoreCol(lastScore) }}>{lastScore}<small>/100</small></div>}
+        </div>
       </div>
 
-      <div className="fc-ct-sliders">
-        <label style={{ ['--chc' as string]: '#ef5d52' }}><span className="ch">R</span><input type="range" min={0} max={255} value={r} onChange={(e) => setR(+e.target.value)} /><span className="val">{r}</span></label>
-        <label style={{ ['--chc' as string]: '#6cc36a' }}><span className="ch">G</span><input type="range" min={0} max={255} value={g} onChange={(e) => setG(+e.target.value)} /><span className="val">{g}</span></label>
-        <label style={{ ['--chc' as string]: '#4d7cff' }}><span className="ch">B</span><input type="range" min={0} max={255} value={b} onChange={(e) => setB(+e.target.value)} /><span className="val">{b}</span></label>
+      <div className="fc-ct-bottom">
+        <span className="fc-ct-instr">{showTarget ? 'MEMORISE THE COLOUR…' : 'dial H · S · V to match'}</span>
+        <button className="fc-ct-submit" onClick={() => submitRef.current()} disabled={phase !== 'dial'} title="Lock in (Enter)">◎</button>
       </div>
-
-      <button className="fc-btn fc-btn-gold fc-ct-lock" onClick={() => lockRef.current()} disabled={phase !== 'play'}>LOCK IN ▶</button>
-      <div className="fc-fh-foot">drag <b>R G B</b> · ⏎ lock in · ⎋ eject</div>
+      <div className="fc-fh-foot">memorise, then dial to match · ⏎ lock in · ⎋ eject</div>
     </div>
   );
 }

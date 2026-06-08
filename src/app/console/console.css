@@ -242,28 +242,35 @@ body.fc-smash .fig-side { display: none !important; }
 .fc-fh-foot, .fc-ct-foot { text-align: center; font-family: var(--fc-sans); font-size: 13px; color: #9b988f; }
 .fc-fh-foot b { color: var(--fc-yellow); font-family: var(--fc-pix); font-size: 10px; }
 
-/* ===== FigContrast — timed dial-in-the-colour (dark screen) ============= */
-.fc-ct-timer { display: flex; align-items: center; gap: 12px; width: min(460px, 92%); margin: 0 auto; }
-.fc-ct-timebar { flex: 1; height: 14px; background: #0b0c14; border: 2px solid #000; overflow: hidden; }
-.fc-ct-timefill { height: 100%; transition: width 0.1s linear; }
-.fc-ct-timenum { font-family: var(--fc-pix); font-size: 12px; min-width: 36px; text-align: right; }
-.fc-ct-stage { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; }
-.fc-ct-swatch {
-  position: relative; width: min(460px, 92%); height: 168px; box-sizing: border-box;
-  border: 22px solid #000; box-shadow: 5px 5px 0 rgba(0, 0, 0, 0.5);
+/* ===== FigContrast — colour memory (dark screen) ======================= */
+.fc-ct-main { flex: 1; display: flex; gap: 16px; align-items: stretch; justify-content: center; padding: 6px 0 4px; min-height: 0; }
+.fc-ct-sliders-v { display: flex; gap: 12px; }
+.fc-vs { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.fc-vs-track { position: relative; width: 26px; flex: 1; border: 2px solid #000; box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.5); cursor: pointer; touch-action: none; }
+.fc-vs-knob { position: absolute; left: 50%; width: 22px; height: 22px; border-radius: 50%; background: #fff; border: 2px solid #000; transform: translate(-50%, 50%); box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5); pointer-events: none; }
+.fc-vs-label { font-family: var(--fc-pix); font-size: 9px; color: #cfcdd6; }
+.fc-ct-big {
+  flex: 1; max-width: 360px; position: relative; border: 2px solid #000; box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.5);
   display: flex; align-items: center; justify-content: center;
 }
-.fc-ct-count { font-family: var(--fc-pix); font-size: 46px; color: #fff; text-shadow: 3px 3px 0 rgba(0, 0, 0, 0.6); }
-.fc-ct-readout {
-  position: absolute; left: 0; right: 0; bottom: 8px; text-align: center;
-  font-family: var(--fc-pix); font-size: 14px; text-shadow: 2px 2px 0 #000;
+.fc-ct-ms { font-family: var(--fc-pix); font-size: 26px; color: #fff; text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.5); }
+.fc-ct-ms small { font-size: 11px; opacity: 0.8; margin-left: 3px; }
+.fc-ct-roundscore { font-family: var(--fc-pix); font-size: 34px; text-shadow: 2px 2px 0 #000; }
+.fc-ct-roundscore small { font-size: 12px; }
+
+.fc-ct-bottom { display: flex; align-items: center; justify-content: space-between; padding: 6px 4px; }
+.fc-ct-instr { font-family: var(--fc-pix); font-size: 9px; color: #9b988f; }
+.fc-ct-submit {
+  width: 48px; height: 48px; border-radius: 50%; cursor: pointer; font-size: 22px; line-height: 1;
+  background: var(--fc-yellow); color: var(--fc-ink); border: 3px solid #000; box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.5);
 }
-.fc-ct-hint { font-family: var(--fc-sans); font-size: 13px; color: #9b988f; }
-.fc-ct-sliders { display: flex; flex-direction: column; gap: 11px; width: min(440px, 100%); margin: 0 auto 12px; }
-.fc-ct-sliders label { display: grid; grid-template-columns: 22px 1fr 42px; align-items: center; gap: 12px; }
-.fc-ct-sliders .ch { font-family: var(--fc-pix); font-size: 10px; color: var(--chc); }
-.fc-ct-sliders .val { font-family: var(--fc-pix); font-size: 8px; color: #fff; text-align: right; }
-.fc-ct-sliders input[type=range] { -webkit-appearance: none; appearance: none; height: 12px; background: #0b0c14; border: 2px solid #000; outline: none; }
-.fc-ct-sliders input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 20px; background: var(--chc); border: 2px solid #000; cursor: pointer; }
-.fc-ct-sliders input[type=range]::-moz-range-thumb { width: 16px; height: 20px; background: var(--chc); border: 2px solid #000; cursor: pointer; }
-.fc-ct-lock { width: min(440px, 100%); margin: 0 auto 8px; }
+.fc-ct-submit:hover:not(:disabled) { transform: translate(-1px, -1px); }
+.fc-ct-submit:disabled { opacity: 0.4; cursor: default; }
+
+.fc-ct-done { align-items: center; justify-content: center; gap: 18px; }
+.fc-ct-donetitle { font-family: var(--fc-pix); font-size: 13px; color: var(--fc-yellow); }
+.fc-ct-dotrow { display: flex; gap: 10px; }
+.fc-ct-dot { font-family: var(--fc-pix); font-size: 12px; }
+.fc-ct-total { font-family: var(--fc-pix); font-size: 44px; }
+.fc-ct-total small { font-size: 14px; color: #9b988f; }
+.fc-ct-best { font-family: var(--fc-pix); font-size: 10px; color: var(--fc-teal); animation: fc-blink 0.6s steps(1) infinite; }
