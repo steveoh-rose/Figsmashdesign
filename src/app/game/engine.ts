@@ -286,7 +286,7 @@ function nearestFreeProp(){ let best=null,bd=1e9; for(const o of props){ if(o.he
 function designTarget(){ const t=designTiles(); if(!t.length) return null; let best=t[0],bd=1e9; for(const o of t){ const d=Math.hypot(o.x-cpu.x,o.y-cpu.y); if(d<bd){bd=d;best=o;} } return best; }
 function smashDesignTile(o){ const i=props.indexOf(o); if(i<0) return; props.splice(i,1); try{ cutProp(o,(Math.random()-0.5),-0.6,260+Math.random()*160); }catch(e){} designHP=Math.max(0,designHP-100/Math.max(1,designTileTotal)); pop(o.x,o.y-o.h*0.4,'design −'+Math.round(100/designTileTotal)+'%','#ff4d6d'); try{ sndHit(); }catch(e){} addShake(0.35); if(designHP<=0) ripEnd(false); }
 function ripAttackDesign(dt){ if(matchOver||winnerPending||countdown>0) return; if(cpu.respawn>0||(cpu.stun||0)>0||cpu.dash) return; designAtkCd-=dt; if(designAtkCd>0) return; designAtkCd=(lvl.designRate||2.5)*(0.8+Math.random()*0.4); const o=designTarget(); if(!o){ designHP=0; ripEnd(false); return; } smashDesignTile(o); }
-function ripEnd(youWin){ if(matchOver) return; winnerPending=false; matchOver=true; koBanner=0; try{ window.__ripBattleDNA=captureBattleDNA(); }catch(e){} try{ sndWin(); }catch(e){} try{ window.dispatchEvent(new CustomEvent('ripdesigns:matchend',{detail:{youWin, dna:window.__ripBattleDNA}})); }catch(e){} }
+function ripEnd(youWin){ if(matchOver) return; winnerPending=false; matchOver=true; _arenaActive=false; koBanner=0; try{ window.__ripBattleDNA=captureBattleDNA(); }catch(e){} try{ sndWin(); }catch(e){} try{ window.dispatchEvent(new CustomEvent('ripdesigns:matchend',{detail:{youWin, dna:window.__ripBattleDNA}})); }catch(e){} }
 
 function stepFighter(f,dt){ if(f.dead) return;
   f.punchCd=Math.max(0,f.punchCd-dt); f.sliceCd=Math.max(0,(f.sliceCd||0)-dt); f.punchFx=Math.max(0,f.punchFx-dt); f.hitTimer=Math.max(0,f.hitTimer-dt);
@@ -616,8 +616,9 @@ function drawCount(){ if(countdown<=-0.6) return; const go=countdown<=0; const t
 function frame(now){ let dt=(now-last)/1000; last=now; dt=Math.min(dt,0.05);
   timeScale+=(1-timeScale)*Math.min(1,dt*2.5); shakeTrauma=Math.max(0,shakeTrauma-dt*1.6);
   if(countdown>-1){ countdown-=dt; const n=countdown>0?Math.ceil(countdown):(countdown>-0.6?0:-1); if(n!==countShown&&n>=0){ if(n===0)_audio.blip(840,0.3,'square',0.18,1260); else _audio.blip(520,0.12,'square',0.14); countShown=n; } }
-  if(hitstop>0||fqActive||charSelectOpen||countdown>0||matchOver||paused){ if(hitstop>0)hitstop-=dt; } else { acc+=dt*timeScale; let st=0; while(acc>=STEP&&st<8){ physics(STEP); acc-=STEP; st++; } }
-  render(); frames++; fpsT+=dt;
+  if(!_arenaActive||hitstop>0||fqActive||charSelectOpen||countdown>0||matchOver||paused){ if(hitstop>0)hitstop-=dt; } else { acc+=dt*timeScale; let st=0; while(acc>=STEP&&st<8){ physics(STEP); acc-=STEP; st++; } }
+  if(_arenaActive){ render(); } else { ctx.clearRect(0,0,W,H); }
+  frames++; fpsT+=dt;
   if(fpsT>=0.4){ document.getElementById('fps').textContent=Math.round(frames/fpsT)+'fps'; frames=0; fpsT=0;
     document.getElementById('pdmg').textContent=Math.round(player.dmg)+'%'; document.getElementById('cdmg').textContent=Math.round(cpu.dmg)+'%';
     document.getElementById('cstate').textContent=cpu.brain.state; document.getElementById('syou').textContent=scoreYou; document.getElementById('scpu').textContent=scoreCpu; }
@@ -715,6 +716,7 @@ function captureBattleDNA(){
   return { fileName, layerCount, colorPalette: palette };
 }
 let _ripDriven=false;   // true when React's app shell launched this match
+let _arenaActive=false; // true only while a match is live — gates the sim/render so the brawler doesn't run idle behind the console
 function showWinScreen(){ winnerPending=false; matchOver=true; const youWin=scoreYou>=STOCKS_TO_WIN;
   try{ window.__ripBattleDNA=captureBattleDNA(); }catch(e){}
   // In RIP Designs, YOU defend the design; the AI ("Heartless Client") tries to
@@ -891,10 +893,10 @@ function ripStartMatch(opts){ opts=opts||{};
   var c=CHARACTERS.find(function(x){ return x.id===opts.charId; })||CHARACTERS[0];
   pendingChar=c;
   ['charselect','mapselect','importdlg','winscreen','pausemenu'].forEach(function(id){ var e=document.getElementById(id); if(e) e.classList.remove('show'); });
-  scoreYou=scoreCpu=0; matchOver=false; winnerPending=false; paused=false; designHP=100;
+  scoreYou=scoreCpu=0; matchOver=false; winnerPending=false; paused=false; designHP=100; _arenaActive=true;
   startBattle();
 }
-function ripForfeit(){ matchOver=true; winnerPending=false; paused=false; countdown=-99;
+function ripForfeit(){ matchOver=true; winnerPending=false; paused=false; countdown=-99; _arenaActive=false;
   ['winscreen','pausemenu'].forEach(function(id){ var e=document.getElementById(id); if(e) e.classList.remove('show'); }); }
 // Select a built-in prop stage (Spotifight / Smack / Figtube …) instead of an
 // imported design image. Clears any image stage so spawnProps builds the map.
