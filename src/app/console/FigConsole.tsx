@@ -71,9 +71,9 @@ const ContrastArt = () => (
 );
 
 const CARTS: Cart[] = [
-  { id: 'figsmash', name: 'FIGSMASH', tag: 'BRAWLER', blurb: 'KO the Unaligned Stakeholder.', color: '#d24b3e', art: <SmashArt /> },
-  { id: 'fighero', name: 'FIGHERO', tag: 'RHYTHM', blurb: 'Shortcut muscle-memory drill.', color: '#b06cd9', art: <HeroArt /> },
-  { id: 'figcontrast', name: 'FIGCONTRAST', tag: 'CALIBRATE', blurb: 'Dial in the bit-crushed signal.', color: '#46c6d9', art: <ContrastArt /> },
+  { id: 'figsmash', name: 'FigSmash', tag: 'BRAWLER', blurb: 'KO the Unaligned Stakeholder.', color: '#ef5d52', art: <SmashArt /> },
+  { id: 'fighero', name: 'FigHero', tag: 'RHYTHM', blurb: 'Shortcut muscle-memory drill.', color: '#4d7cff', art: <HeroArt /> },
+  { id: 'figcontrast', name: 'FigContrast', tag: 'CALIBRATE', blurb: 'Dial in the bit-crushed signal.', color: '#2ec4b6', art: <ContrastArt /> },
 ];
 
 const SMASH_DESIGN = `data:image/svg+xml;utf8,${encodeURIComponent(
@@ -184,8 +184,9 @@ export function FigConsole() {
     <div className="fc-root">
       <div className="fc-window">
         <div className="fc-titlebar">
+          <span className="fc-close" aria-hidden="true"><i /></span>
           <span className="fc-title">GAME CREATOR PRO v1.67</span>
-          <span className="fc-clock">{fmtClock(clock)} · 1985</span>
+          <span className="fc-clock">{fmtClock(clock)}</span>
         </div>
         <div className="fc-menubar">
           <span className="fc-menu-exe">💾 EXECUTABLE</span>
