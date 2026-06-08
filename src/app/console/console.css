@@ -242,15 +242,20 @@ body.fc-smash .fig-side { display: none !important; }
 .fc-fh-foot, .fc-ct-foot { text-align: center; font-family: var(--fc-sans); font-size: 13px; color: #9b988f; }
 .fc-fh-foot b { color: var(--fc-yellow); font-family: var(--fc-pix); font-size: 10px; }
 
-/* ===== FigContrast — dial-in-the-colour (dark screen) =================== */
+/* ===== FigContrast — timed dial-in-the-colour (dark screen) ============= */
+.fc-ct-timer { display: flex; align-items: center; gap: 12px; width: min(460px, 92%); margin: 0 auto; }
+.fc-ct-timebar { flex: 1; height: 14px; background: #0b0c14; border: 2px solid #000; overflow: hidden; }
+.fc-ct-timefill { height: 100%; transition: width 0.1s linear; }
+.fc-ct-timenum { font-family: var(--fc-pix); font-size: 12px; min-width: 36px; text-align: right; }
 .fc-ct-stage { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; }
 .fc-ct-swatch {
-  position: relative; width: min(460px, 92%); height: 168px; display: flex;
-  border: 3px solid #000; box-shadow: 5px 5px 0 rgba(0, 0, 0, 0.5); overflow: hidden;
+  position: relative; width: min(460px, 92%); height: 168px; box-sizing: border-box;
+  border: 22px solid #000; box-shadow: 5px 5px 0 rgba(0, 0, 0, 0.5);
+  display: flex; align-items: center; justify-content: center;
 }
-.fc-ct-half { flex: 1; height: 100%; }
+.fc-ct-count { font-family: var(--fc-pix); font-size: 46px; color: #fff; text-shadow: 3px 3px 0 rgba(0, 0, 0, 0.6); }
 .fc-ct-readout {
-  position: absolute; left: 0; right: 0; bottom: 10px; text-align: center;
+  position: absolute; left: 0; right: 0; bottom: 8px; text-align: center;
   font-family: var(--fc-pix); font-size: 14px; text-shadow: 2px 2px 0 #000;
 }
 .fc-ct-hint { font-family: var(--fc-sans); font-size: 13px; color: #9b988f; }
