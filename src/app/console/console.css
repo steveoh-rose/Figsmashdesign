@@ -110,6 +110,35 @@
 .fc-btn-gold { background: var(--fc-gold); color: #2b1740; box-shadow: 3px 3px 0 var(--fc-gold-d); }
 .fc-insert, .fc-ct-lock { width: 100%; }
 
+/* ---- FigSmash stage select --------------------------------------------- */
+.fc-stagesel {
+  position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center;
+  gap: 16px; padding: 22px; background: radial-gradient(120% 100% at 50% 0%, #1d1d3a, #0c0c1c);
+}
+.fc-ss-title { font-family: var(--fc-pix); font-size: 12px; color: var(--fc-gold); margin-top: 4px; }
+.fc-ss-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; width: min(640px, 100%); }
+.fc-ss-card {
+  display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: pointer; padding: 10px;
+  background: var(--fc-screen-l); color: var(--fc-text); border: 3px solid #000; box-shadow: 3px 3px 0 rgba(0,0,0,0.5);
+}
+.fc-ss-card:hover { transform: translate(-1px,-1px); }
+.fc-ss-card.sel { border-color: var(--cc); box-shadow: 3px 3px 0 var(--cc); }
+.fc-ss-prev { width: 100%; height: 56px; background: #0c0c1c; border: 2px solid #000; display: block; position: relative; image-rendering: pixelated; overflow: hidden; }
+.fc-ss-bar { position: absolute; top: 0; left: 0; right: 0; height: 10px; }
+.fc-ss-blk { position: absolute; left: 8px; top: 18px; width: 22px; height: 22px; opacity: 0.85; }
+.fc-ss-row { position: absolute; left: 36px; top: 20px; right: 8px; height: 7px; background: #4a4a66; }
+.fc-ss-row.short { top: 32px; right: 26px; background: #38384e; }
+.fc-ss-name { font-family: var(--fc-pix); font-size: 8px; }
+.fc-ss-sub { font-family: var(--fc-pix); font-size: 6px; color: var(--cc); }
+.fc-ss-diff { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: center; }
+.fc-ss-difflabel { font-family: var(--fc-pix); font-size: 8px; color: var(--fc-dim); }
+.fc-ss-diff button {
+  font-family: var(--fc-pix); font-size: 8px; cursor: pointer; padding: 7px 9px;
+  background: var(--fc-egg-d); color: var(--fc-text); border: 2px solid #000;
+}
+.fc-ss-diff button.on { background: var(--fc-gold); color: #2b1740; }
+.fc-ss-btns { display: flex; gap: 12px; margin-top: auto; }
+
 /* ---- boot / cartridge slide-in ----------------------------------------- */
 .fc-boot {
   position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 26px;

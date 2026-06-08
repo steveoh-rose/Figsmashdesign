@@ -891,13 +891,17 @@ function ripStartMatch(opts){ opts=opts||{};
   var c=CHARACTERS.find(function(x){ return x.id===opts.charId; })||CHARACTERS[0];
   pendingChar=c;
   ['charselect','mapselect','importdlg','winscreen','pausemenu'].forEach(function(id){ var e=document.getElementById(id); if(e) e.classList.remove('show'); });
-  scoreYou=scoreCpu=0; matchOver=false; winnerPending=false; paused=false;
+  scoreYou=scoreCpu=0; matchOver=false; winnerPending=false; paused=false; designHP=100;
   startBattle();
 }
 function ripForfeit(){ matchOver=true; winnerPending=false; paused=false; countdown=-99;
   ['winscreen','pausemenu'].forEach(function(id){ var e=document.getElementById(id); if(e) e.classList.remove('show'); }); }
-(window as any).RIPArena={ loadImageStage:ripLoadImageStage, startMatch:ripStartMatch, forfeit:ripForfeit,
-  characters:CHARACTERS.map(function(c){ return { id:c.id, name:c.name, color:c.color, ability:c.desc, shape:c.shape }; }) };
+// Select a built-in prop stage (Spotifight / Smack / Figtube …) instead of an
+// imported design image. Clears any image stage so spawnProps builds the map.
+function ripSetStage(id){ var m=MAPS.find(function(x){ return x.id===id; }); if(!m) return; imageStage=null; currentDesign=null; currentMap=m; pendingMap=m; try{ spawnProps(); }catch(e){} }
+(window as any).RIPArena={ loadImageStage:ripLoadImageStage, startMatch:ripStartMatch, forfeit:ripForfeit, setStage:ripSetStage,
+  characters:CHARACTERS.map(function(c){ return { id:c.id, name:c.name, color:c.color, ability:c.desc, shape:c.shape }; }),
+  stages:MAPS.filter(function(m){ return m.id!=='custom'; }).map(function(m){ return { id:m.id, name:m.name, sub:m.sub, accent:m.accent }; }) };
 try{ window.dispatchEvent(new CustomEvent('ripdesigns:arena-ready')); }catch(e){}
 
 if (_deepLinkImported) {

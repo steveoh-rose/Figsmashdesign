@@ -10,7 +10,21 @@ import { FigHero } from './games/FigHero';
 import { FigContrast } from './games/FigContrast';
 import './console.css';
 
-type Mode = 'desktop' | 'boot' | 'game';
+type Mode = 'desktop' | 'stageselect' | 'boot' | 'game';
+
+interface SmashStage { id: string; name: string; sub: string; accent: string; }
+const SMASH_STAGES: SmashStage[] = [
+  { id: 'design', name: 'REVIEW BUILD', sub: 'YOUR .FIG', accent: '#e7b53c' },
+  { id: 'spotify', name: 'SPOTIFIGHT', sub: 'MUSIC APP', accent: '#1db954' },
+  { id: 'slack', name: 'SMACK', sub: 'CHAT APP', accent: '#b06cd9' },
+  { id: 'youtube', name: 'FIGTUBE', sub: 'VIDEO APP', accent: '#ff4d4d' },
+];
+const SMASH_DIFFS = [
+  { id: 'ollama', name: 'INTERN' },
+  { id: 'haiku', name: 'JUNIOR' },
+  { id: 'sonnet', name: 'SENIOR' },
+  { id: 'opus', name: 'DIRECTOR' },
+];
 
 interface Cart {
   id: CartridgeId;
@@ -78,25 +92,36 @@ export function FigConsole() {
   const [active, setActive] = useState<CartridgeId | null>(null);
   const [selected, setSelected] = useState<CartridgeId>('figsmash');
   const [results, setResults] = useState<{ cart: CartridgeId; score: number; isHigh: boolean; win?: boolean } | null>(null);
+  const [smashStage, setSmashStage] = useState('design');
+  const [smashDiff, setSmashDiff] = useState('haiku');
   const bootTimer = useRef<number | null>(null);
 
   const arena = () => (window as any).RIPArena;
 
-  const launch = useCallback((id: CartridgeId) => {
-    setSelected(id);
-    setResults(null);
+  const startBoot = useCallback((id: CartridgeId, after?: () => void) => {
     setActive(id);
     setMode('boot');
     if (bootTimer.current) clearTimeout(bootTimer.current);
-    bootTimer.current = window.setTimeout(() => {
-      setMode('game');
-      if (id === 'figsmash') {
-        document.body.classList.add('rip-arena', 'fc-smash');
-        const ra = arena();
-        if (ra) ra.loadImageStage(SMASH_DESIGN, 'review_build_v3.fig', () => ra.startMatch({ charId: 'mario', difficulty: 'haiku' }));
-      }
-    }, 2300);
+    bootTimer.current = window.setTimeout(() => { setMode('game'); after?.(); }, 2300);
   }, []);
+
+  const launchSmash = useCallback(() => {
+    startBoot('figsmash', () => {
+      document.body.classList.add('rip-arena', 'fc-smash');
+      const ra = arena();
+      if (!ra) return;
+      if (smashStage === 'design') ra.loadImageStage(SMASH_DESIGN, 'review_build_v3.fig', () => ra.startMatch({ charId: 'mario', difficulty: smashDiff }));
+      else { ra.setStage(smashStage); ra.startMatch({ charId: 'mario', difficulty: smashDiff }); }
+    });
+  }, [startBoot, smashStage, smashDiff]);
+
+  // FigSmash routes through stage select first; other carts boot straight in.
+  const launch = useCallback((id: CartridgeId) => {
+    setSelected(id);
+    setResults(null);
+    if (id === 'figsmash') { setActive('figsmash'); setMode('stageselect'); return; }
+    startBoot(id);
+  }, [startBoot]);
 
   const finishGame = useCallback((id: CartridgeId, score: number, secondsPlayed: number, win?: boolean) => {
     const isHigh = submitScore(id, score);
@@ -129,6 +154,7 @@ export function FigConsole() {
       if (e.key !== 'Escape') return;
       if (mode === 'game' && active === 'figsmash') ejectSmash();
       else if (mode === 'game') { document.body.classList.remove('rip-arena', 'fc-smash'); setActive(null); setMode('desktop'); }
+      else if (mode === 'stageselect') { setActive(null); setMode('desktop'); }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -166,7 +192,7 @@ export function FigConsole() {
             <FigContrast highScore={state.highScores.figcontrast} onExit={(s, t) => finishGame('figcontrast', s, t)} />
           )}
 
-          {mode !== 'game' && (
+          {mode === 'desktop' && (
             <div className="fc-desktop">
               <div className="fc-carts">
                 {CARTS.map((c) => (
@@ -197,6 +223,41 @@ export function FigConsole() {
             </div>
           )}
 
+          {mode === 'stageselect' && (
+            <div className="fc-stagesel">
+              <div className="fc-ss-title">▶ SELECT STAGE</div>
+              <div className="fc-ss-grid">
+                {SMASH_STAGES.map((s) => (
+                  <button
+                    key={s.id}
+                    className={`fc-ss-card ${smashStage === s.id ? 'sel' : ''}`}
+                    style={{ ['--cc' as string]: s.accent }}
+                    onClick={() => setSmashStage(s.id)}
+                    onDoubleClick={launchSmash}
+                  >
+                    <span className="fc-ss-prev">
+                      <i className="fc-ss-bar" style={{ background: s.accent }} />
+                      <i className="fc-ss-blk" style={{ background: s.accent }} />
+                      <i className="fc-ss-row" /><i className="fc-ss-row short" />
+                    </span>
+                    <span className="fc-ss-name">{s.name}</span>
+                    <span className="fc-ss-sub">{s.sub}</span>
+                  </button>
+                ))}
+              </div>
+              <div className="fc-ss-diff">
+                <span className="fc-ss-difflabel">CLIENT IQ</span>
+                {SMASH_DIFFS.map((d) => (
+                  <button key={d.id} className={smashDiff === d.id ? 'on' : ''} onClick={() => setSmashDiff(d.id)}>{d.name}</button>
+                ))}
+              </div>
+              <div className="fc-ss-btns">
+                <button className="fc-btn" onClick={() => { setActive(null); setMode('desktop'); }}>← DESKTOP</button>
+                <button className="fc-btn fc-btn-gold" onClick={launchSmash}>FIGHT! ▶</button>
+              </div>
+            </div>
+          )}
+
           {mode === 'boot' && active && (
             <div className="fc-boot">
               <div className="fc-slot">
@@ -215,7 +276,7 @@ export function FigConsole() {
 
         <div className="fc-statusbar">
           <span>FIGCONSOLE 67</span>
-          <span>{mode === 'desktop' ? 'READY.' : mode === 'boot' ? 'BOOTING…' : 'RUNNING'}</span>
+          <span>{mode === 'desktop' ? 'READY.' : mode === 'stageselect' ? 'SELECT STAGE' : mode === 'boot' ? 'BOOTING…' : 'RUNNING'}</span>
           <span className="fc-blink">_</span>
         </div>
       </div>
