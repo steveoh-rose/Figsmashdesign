@@ -24,9 +24,11 @@ const GearIcon = () => (
 );
 
 export function BottomNav({ active, onNavigate }: { active: NavTab; onNavigate: (t: NavTab) => void }) {
-  const tabs: { id: NavTab; icon: JSX.Element; label: string }[] = [
+  // The game is primary: "Play" is the big central action; garden + settings are
+  // small, secondary, on either side.
+  const tabs: { id: NavTab; icon: JSX.Element; label: string; play?: boolean }[] = [
     { id: 'garden', icon: <LeafIcon />, label: 'Garden' },
-    { id: 'add', icon: <PlusIcon />, label: 'Plant a memory' },
+    { id: 'add', icon: <PlusIcon />, label: 'Play', play: true },
     { id: 'settings', icon: <GearIcon />, label: 'Settings' },
   ];
   return (
@@ -34,7 +36,7 @@ export function BottomNav({ active, onNavigate }: { active: NavTab; onNavigate: 
       {tabs.map((t) => (
         <button
           key={t.id}
-          className={`rip-navbtn ${active === t.id ? 'on' : ''}`}
+          className={`rip-navbtn ${t.play ? 'rip-navbtn-play' : ''} ${active === t.id ? 'on' : ''}`}
           onClick={() => onNavigate(t.id)}
           aria-label={t.label}
           title={t.label}

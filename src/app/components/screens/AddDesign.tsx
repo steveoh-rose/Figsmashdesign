@@ -39,29 +39,18 @@ export function AddDesign({
 
   return (
     <div className="rip-screen rip-add">
-      <div className="rip-add-today">
-        <span className="rip-add-todaylabel">Today</span>
-        <div className="rip-add-recent">
-          {recent.map((d) => (
-            <PlantDoodle
-              key={d.id}
-              index={d.plantSpriteIndex}
-              stroke={d.colorPalette[0] || '#3b3bdd'}
-              fill={d.colorPalette[1] || '#3b3bdd'}
-              size={34}
-            />
-          ))}
-          <span className="rip-add-todaycell" />
-        </div>
+      <div className="rip-add-head">
+        <h1 className="rip-add-title">Defend a design</h1>
+        <p className="rip-add-sub">Drop in a killed file and fight to save it from the Heartless Client.</p>
       </div>
 
       <div className="rip-add-center">
         <button className="rip-add-plus" onClick={() => fileRef.current?.click()} disabled={busy}>
-          <span>+</span>
+          <span>{busy ? '…' : '+'}</span>
         </button>
-        <div className="rip-add-label">{busy ? 'Loading…' : 'Plant memory'}</div>
+        <div className="rip-add-label">{busy ? 'Loading…' : 'Upload a design'}</div>
         <button className="rip-add-plugin" onClick={() => onChosen(pluginStubDesign())} disabled={busy}>
-          ⤓ Use design preloaded from plugin
+          ⤓ Use a design from the plugin
         </button>
         {err && <div className="rip-add-err">{err}</div>}
         <input
@@ -72,6 +61,23 @@ export function AddDesign({
           onChange={(e) => handleFile(e.target.files?.[0])}
         />
       </div>
+
+      {recent.length > 0 && (
+        <button className="rip-add-gardenpeek" onClick={() => onNavigate('garden')}>
+          <span className="rip-add-gardenplants">
+            {recent.map((d) => (
+              <PlantDoodle
+                key={d.id}
+                index={d.plantSpriteIndex}
+                stroke={d.colorPalette[0] || '#3b3bdd'}
+                fill={d.colorPalette[1] || '#3b3bdd'}
+                size={26}
+              />
+            ))}
+          </span>
+          {designs.length} buried in your garden →
+        </button>
+      )}
 
       <BottomNav active="add" onNavigate={onNavigate} />
     </div>

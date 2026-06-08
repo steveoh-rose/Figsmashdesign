@@ -11,10 +11,10 @@ export function StartScreen({ onEnter }: { onEnter: () => void }) {
         </svg>
         <h1 className="rip-start-title">RIP Designs</h1>
         <p className="rip-start-sub">
-          Every killed file deserves a burial. Smash it, bury it, watch it bloom.
+          Defend your killed designs from the Heartless Client. Win, and they bloom in your garden.
         </p>
         <button className="rip-btn prim rip-start-btn" onClick={onEnter}>
-          Enter your garden →
+          Start a match →
         </button>
         <p className="rip-start-foot">The Catharsis Garden · Config Makeathon 2026</p>
       </div>

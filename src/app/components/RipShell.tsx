@@ -86,12 +86,10 @@ export function RipShell() {
     }
   }, []);
 
-  // Bottom-nav routing shared by garden / add / settings screens.
+  // Bottom-nav routing shared by play / garden / settings screens.
   const navigate = useCallback((t: NavTab) => setPhase(t), []);
-  // Empty garden? Send the player straight to uploading their first design.
-  const enterFromStart = useCallback(() => {
-    setPhase(garden.designs.length === 0 ? 'add' : 'garden');
-  }, [garden.designs.length]);
+  // The game is the home: land on the play screen, not the garden.
+  const enterFromStart = useCallback(() => setPhase('add'), []);
 
   const retry = useCallback(() => {
     setLost(false);
@@ -102,20 +100,20 @@ export function RipShell() {
     arena()?.forfeit();
     setLost(false);
     setPending(null);
-    setPhase('garden');
+    setPhase('add');
   }, []);
 
   const handlePlant = (dna: BattleDNA, eulogy: string) => {
     garden.plant(dna, eulogy);
     setBloomDna(null);
     setPending(null);
-    setPhase('garden');
+    setPhase('add');
   };
 
   const skipBloom = () => {
     setBloomDna(null);
     setPending(null);
-    setPhase('garden');
+    setPhase('add');
   };
 
   const selected = selectedId ? garden.designs.find((d) => d.id === selectedId) ?? null : null;

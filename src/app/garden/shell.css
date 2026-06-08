@@ -72,14 +72,18 @@ body.rip-arena .fig-help { display: none !important; }
   background: linear-gradient(180deg, #eef0f3 0%, #e9ebf0 100%);
   padding-bottom: 96px;
 }
-.rip-add-today { width: min(560px, 100%); padding: 22px 20px 0; }
-.rip-add-todaylabel { display: block; text-align: center; font-size: 13px; color: var(--rip-ink-soft); margin-bottom: 8px; }
-.rip-add-recent { display: flex; align-items: flex-end; justify-content: center; gap: 10px; min-height: 56px; }
-.rip-add-todaycell {
-  width: 46px; height: 46px; border-radius: 12px;
-  background: rgba(46,46,201,0.1); box-shadow: inset 0 0 0 1.5px rgba(46,46,201,0.2);
-}
+.rip-add-head { width: min(560px, 100%); padding: 34px 20px 0; text-align: center; }
+.rip-add-title { font-family: var(--rip-script); font-size: 44px; color: var(--rip-ink); margin: 0; line-height: 0.95; }
+.rip-add-sub { font-size: 13.5px; color: var(--rip-ink-soft); margin-top: 4px; }
 .rip-add-center { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; }
+.rip-add-gardenpeek {
+  position: fixed; bottom: 92px; left: 50%; transform: translateX(-50%);
+  display: flex; align-items: center; gap: 8px; cursor: pointer;
+  font-family: var(--rip-hand); font-size: 12.5px; color: var(--rip-ink-soft);
+  background: none; border: none;
+}
+.rip-add-gardenpeek:hover { color: var(--rip-ink); }
+.rip-add-gardenplants { display: flex; align-items: flex-end; gap: 2px; }
 .rip-add-plus {
   width: 86px; height: 86px; border-radius: 50%;
   border: 2.5px solid var(--rip-ink); background: transparent; color: var(--rip-ink);
@@ -101,17 +105,25 @@ body.rip-arena .fig-help { display: none !important; }
 /* ---- Bottom nav -------------------------------------------------------- */
 .rip-bottomnav {
   position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 5;
-  display: flex; gap: 10px; padding: 8px;
-  background: var(--rip-paper); border-radius: 18px;
+  display: flex; align-items: center; gap: 14px; padding: 8px 12px;
+  background: var(--rip-paper); border-radius: 22px;
   box-shadow: 0 10px 28px rgba(46,46,201,0.25), inset 0 0 0 1px var(--rip-paper-edge);
 }
 .rip-navbtn {
-  width: 46px; height: 46px; border-radius: 13px; border: none; cursor: pointer;
-  font-size: 20px; background: transparent; color: var(--rip-ink);
-  display: flex; align-items: center; justify-content: center; transition: background 0.15s ease;
+  width: 42px; height: 42px; border-radius: 13px; border: none; cursor: pointer;
+  font-size: 20px; background: transparent; color: var(--rip-ink-soft);
+  display: flex; align-items: center; justify-content: center; transition: background 0.15s ease, color 0.15s ease;
 }
-.rip-navbtn.on { background: rgba(46,46,201,0.12); }
-.rip-navbtn:hover { background: rgba(46,46,201,0.08); }
+.rip-navbtn.on { background: rgba(46,46,201,0.12); color: var(--rip-ink); }
+.rip-navbtn:hover { background: rgba(46,46,201,0.08); color: var(--rip-ink); }
+/* The game is front and center: Play is a big raised primary button. */
+.rip-navbtn-play {
+  width: 60px; height: 60px; margin-top: -18px; border-radius: 50%;
+  background: var(--rip-ink); color: var(--rip-paper);
+  box-shadow: 0 8px 20px rgba(46,46,201,0.5);
+}
+.rip-navbtn-play svg { width: 26px; height: 26px; }
+.rip-navbtn-play.on, .rip-navbtn-play:hover { background: var(--rip-indigo-deep); color: #fff; }
 
 /* ---- Character select --------------------------------------------------- */
 .rip-char {
