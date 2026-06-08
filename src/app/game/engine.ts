@@ -120,7 +120,24 @@ const MAPS=[
 let currentMap=MAPS[0], pendingMap=MAPS[0];
 let _deepLinkImported = false;
 try{ const _sf=localStorage.getItem('figsmash.frame'); if(_sf) customFrame=JSON.parse(_sf); }catch(e){}
-function spawnProps(){ (currentMap.build||spawnSpotify)(); }
+// RIP Designs: an uploaded design image, sliced into destructible tiles, is the
+// stage the AI ("Heartless Client") tries to smash and you defend.
+let imageStage=null;        // { img, name, image:dataUrl, palette:[] }
+let currentDesign=null;     // mirror used by captureBattleDNA after a match
+function buildImageStage(img, name){ props=[];
+  const cols=4, rows=3, fw=img.naturalWidth||img.width||4, fh=img.naturalHeight||img.height||3;
+  const stageW=Math.min(W*0.6, 700), scale=stageW/fw, stageH=fh*scale;
+  const ofx=W/2-stageW/2, ofy=H*0.46-stageH/2, tw=fw/cols, th=fh/rows;
+  for(let r=0;r<rows;r++) for(let c=0;c<cols;c++){
+    const w=tw*scale, h=th*scale, cx=ofx+c*w+w/2, cy=ofy+r*h+h/2;
+    props.push(mkProp('frameNode', cx, cy, Math.max(22,w), Math.max(22,h), { img, sx:c*tw, sy:r*th, sw:tw, sh:th, c1:'#9aa0b5' }));
+  } }
+function samplePalette(img){ try{ const cv=document.createElement('canvas'); cv.width=24; cv.height=24; const g=cv.getContext('2d'); g.drawImage(img,0,0,24,24); const d=g.getImageData(0,0,24,24).data; const buckets={};
+    for(let i=0;i<d.length;i+=4){ if(d[i+3]<128) continue; const r=d[i]>>5, gg=d[i+1]>>5, b=d[i+2]>>5; const k=(r<<6)|(gg<<3)|b; buckets[k]=(buckets[k]||0)+1; }
+    const top=Object.keys(buckets).sort((a,b)=>buckets[b]-buckets[a]).slice(0,4);
+    const hex=top.map(k=>{ k=+k; const r=((k>>6)&7)<<5, g2=((k>>3)&7)<<5, b=(k&7)<<5; return '#'+[r,g2,b].map(v=>(v+16).toString(16).padStart(2,'0')).join(''); });
+    return hex.length?hex:['#0052CC','#FF5630','#F4F5F7']; }catch(e){ return ['#0052CC','#FF5630','#F4F5F7']; } }
+function spawnProps(){ if(imageStage&&imageStage.img&&imageStage.img.complete){ buildImageStage(imageStage.img, imageStage.name); return; } (currentMap.build||spawnSpotify)(); }
 spawnProps();
 
 let hitstop=0,whiteFlash=0,koBanner=0,koTxt='K.O.';
@@ -350,7 +367,7 @@ function drawSpotifyEl(o){ const w=o.baseW,h=o.baseH;
   if(o.type==='subscribe'){ ctx.fillStyle=o.c1||'#ff0000'; roundRect(-w/2,-h/2,w,h,h/2); ctx.fill(); ctx.fillStyle='#fff'; ctx.font='800 '+(h*0.4)+'px Inter,JetBrains Mono'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('SUBSCRIBE',0,1); return; }
   if(o.type==='searchbar'){ ctx.fillStyle='#121212'; ctx.strokeStyle='#3a3a3a'; ctx.lineWidth=1.5; roundRect(-w/2,-h/2,w,h,h/2); ctx.fill(); ctx.stroke(); ctx.fillStyle='#888'; ctx.font=(h*0.4)+'px Inter,JetBrains Mono'; ctx.textAlign='left'; ctx.textBaseline='middle'; ctx.fillText('Search',-w/2+14,1); ctx.strokeStyle='#aaa'; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(w/2-17,-1,5,0,6.2832); ctx.stroke(); ctx.beginPath(); ctx.moveTo(w/2-13,3); ctx.lineTo(w/2-9,7); ctx.stroke(); return; }
   if(o.type==='frameNode'){
-    if(o.img && o.img.complete && o.img.naturalWidth){ ctx.shadowColor='rgba(0,0,0,.28)'; ctx.shadowBlur=7; ctx.shadowOffsetY=3; try{ ctx.drawImage(o.img,-w/2,-h/2,w,h); }catch(e){} ctx.shadowColor='transparent'; ctx.shadowOffsetY=0; return; }
+    if(o.img && o.img.complete && o.img.naturalWidth){ ctx.shadowColor='rgba(0,0,0,.28)'; ctx.shadowBlur=7; ctx.shadowOffsetY=3; try{ if(o.sw){ ctx.drawImage(o.img,o.sx,o.sy,o.sw,o.sh,-w/2,-h/2,w,h); } else { ctx.drawImage(o.img,-w/2,-h/2,w,h); } }catch(e){} ctx.shadowColor='transparent'; ctx.shadowOffsetY=0; if(o.sw){ ctx.strokeStyle='rgba(255,255,255,.5)'; ctx.lineWidth=1; ctx.strokeRect(-w/2,-h/2,w,h); } return; }
     ctx.shadowColor='rgba(0,0,0,.22)'; ctx.shadowBlur=6; ctx.shadowOffsetY=3;
     if(o.shape==='ellipse'){ ctx.beginPath(); ctx.ellipse(0,0,w/2,h/2,0,0,6.2832); if(o.fill){ ctx.fillStyle=o.fill; ctx.fill(); } else { ctx.strokeStyle='#9aa0b5'; ctx.lineWidth=1.5; ctx.stroke(); } }
     else if(o.shape!=='text'){ const r=Math.min(o.radius||0,Math.min(w,h)/2); roundRect(-w/2,-h/2,w,h,r); if(o.fill){ ctx.fillStyle=o.fill; ctx.fill(); } else { ctx.strokeStyle='#9aa0b5'; ctx.lineWidth=1.5; ctx.stroke(); } }
@@ -623,6 +640,10 @@ function clearArena(){ debris.length=0; bladePts.length=0; bolts.length=0; speci
 // Capture the destroyed design's data signature so the React "Rebirth Bloom"
 // can grow a plant whose colours + complexity are inherited from this battle.
 function captureBattleDNA(){
+  if(currentDesign && currentDesign.image){
+    const pal=(currentDesign.palette&&currentDesign.palette.length)?currentDesign.palette:['#0052CC','#FF5630','#F4F5F7'];
+    return { fileName: currentDesign.name||'Untitled.fig', layerCount: (props?props.length:12)||12, colorPalette: pal.slice(0,4), image: currentDesign.image, defendedBy: (player&&player.char&&player.char.id)||null };
+  }
   const f=customFrame; let fileName, layerCount, palette=[];
   if(f && f.nodes && f.nodes.length){
     fileName=f.name; layerCount=f.nodes.length;
@@ -636,9 +657,14 @@ function captureBattleDNA(){
   while(palette.length<3) palette.push(fill[palette.length]);
   return { fileName, layerCount, colorPalette: palette };
 }
-function showWinScreen(){ winnerPending=false; matchOver=true; const youWin=scoreYou>=STOCKS_TO_WIN; const t=document.getElementById('winresult'); t.textContent=youWin?'YOU WIN!':'CPU WINS'; t.style.color=youWin?'#0d99ff':'#ff4d97';
-  document.getElementById('winscore').innerHTML='<span style="color:#0d99ff">'+scoreYou+'</span> &nbsp;—&nbsp; <span style="color:#ff4d97">'+scoreCpu+'</span>';
+let _ripDriven=false;   // true when React's app shell launched this match
+function showWinScreen(){ winnerPending=false; matchOver=true; const youWin=scoreYou>=STOCKS_TO_WIN;
   try{ window.__ripBattleDNA=captureBattleDNA(); }catch(e){}
+  // In RIP Designs, YOU defend the design; the AI ("Heartless Client") tries to
+  // smash it. A player win means the design survived and can be planted.
+  if(_ripDriven){ sndWin(); try{ window.dispatchEvent(new CustomEvent('ripdesigns:matchend',{detail:{youWin, dna:window.__ripBattleDNA}})); }catch(e){} return; }
+  const t=document.getElementById('winresult'); t.textContent=youWin?'YOU WIN!':'CPU WINS'; t.style.color=youWin?'#0d99ff':'#ff4d97';
+  document.getElementById('winscore').innerHTML='<span style="color:#0d99ff">'+scoreYou+'</span> &nbsp;—&nbsp; <span style="color:#ff4d97">'+scoreCpu+'</span>';
   const gbtn=document.getElementById('wingarden'); if(gbtn) gbtn.style.display=youWin?'':'none';
   document.getElementById('winscreen').classList.add('show'); sndWin(); }
 function rematch(){ document.getElementById('winscreen').classList.remove('show'); matchOver=false; winnerPending=false; scoreYou=scoreCpu=0; resetFighters(); clearArena(); spawnProps(); countdown=3.0; countShown=-1; sndTool(); }
@@ -795,13 +821,34 @@ if (window.opener) {
   try { (window.opener as any).postMessage({ type: 'figsmash-ready' }, '*'); } catch(e) {}
 }
 
+// ---- RIP Designs: app-shell control surface (the React shell drives the flow) ----
+function ripLoadImageStage(dataUrl, name, cb){
+  const im=new Image();
+  im.onload=function(){ imageStage={ img:im, name:name||'Untitled.fig', image:dataUrl, palette:samplePalette(im) }; currentDesign=imageStage; try{ spawnProps(); }catch(e){} if(cb) cb({ palette:imageStage.palette }); };
+  im.onerror=function(){ imageStage={ img:null, name:name||'Untitled.fig', image:dataUrl, palette:['#0052CC','#FF5630','#F4F5F7'] }; currentDesign=imageStage; if(cb) cb({ palette:currentDesign.palette }); };
+  im.src=dataUrl;
+}
+function ripStartMatch(opts){ opts=opts||{};
+  _ripDriven=true;
+  if(opts.difficulty){ applyLevel(opts.difficulty); var _m=document.getElementById('model'); if(_m) _m.value=opts.difficulty; }
+  var c=CHARACTERS.find(function(x){ return x.id===opts.charId; })||CHARACTERS[0];
+  pendingChar=c;
+  ['charselect','mapselect','importdlg','winscreen','pausemenu'].forEach(function(id){ var e=document.getElementById(id); if(e) e.classList.remove('show'); });
+  scoreYou=scoreCpu=0; matchOver=false; winnerPending=false; paused=false;
+  startBattle();
+}
+function ripForfeit(){ matchOver=true; winnerPending=false; paused=false; countdown=-99;
+  ['winscreen','pausemenu'].forEach(function(id){ var e=document.getElementById(id); if(e) e.classList.remove('show'); }); }
+(window as any).RIPArena={ loadImageStage:ripLoadImageStage, startMatch:ripStartMatch, forfeit:ripForfeit,
+  characters:CHARACTERS.map(function(c){ return { id:c.id, name:c.name, color:c.color, ability:c.desc, shape:c.shape }; }) };
+try{ window.dispatchEvent(new CustomEvent('ripdesigns:arena-ready')); }catch(e){}
+
 if (_deepLinkImported) {
   openCharSelect();
 } else if (window.opener) {
   // Opened from plugin — wait up to 3s for full payload before falling back to map select
   _openerTimeout = setTimeout(function() { _openerTimeout = null; openMapSelectFirst(); }, 3000);
-} else {
-  openMapSelectFirst();
 }
+// Otherwise stay idle: the React RipShell drives start → garden → import → arena.
 
 }

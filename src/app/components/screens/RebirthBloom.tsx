@@ -36,6 +36,7 @@ export function RebirthBloom({
         <h1 className="rip-bloom-title">The Rebirth Bloom</h1>
 
         <div className="rip-bloom-stage">
+          {dna.image && <img src={dna.image} alt="" className="rip-bloom-relic" />}
           <div className="rip-bloom-soil" />
           <div className="rip-bloom-grow" key={dna.fileName}>
             <PlantDoodle index={spriteIndex} stroke={stroke} fill={fill} size={120} />

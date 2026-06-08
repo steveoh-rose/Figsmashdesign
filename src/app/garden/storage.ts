@@ -85,6 +85,8 @@ export function useGarden(): GardenApi {
         eulogyComment: eulogy,
         gardenCoordinates: nextCoordinate(prev.length),
         plantSpriteIndex: spriteIndexForLayers(dna.layerCount),
+        image: dna.image,
+        defendedBy: dna.defendedBy,
       };
       const next = [...prev, created];
       save(next);

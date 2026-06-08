@@ -73,7 +73,7 @@
 
 /* ---- The Rebirth Bloom -------------------------------------------------- */
 .rip-bloom {
-  position: fixed; inset: 0; z-index: 70;
+  position: fixed; inset: 0; z-index: 130;
   display: flex; align-items: center; justify-content: center;
   background: radial-gradient(120% 90% at 50% 10%, var(--rip-indigo) 0%, var(--rip-indigo-deep) 45%, var(--rip-indigo-night) 100%);
   animation: rip-fade 0.6s ease-out;
@@ -198,7 +198,7 @@
 
 /* ---- Tombstone Eulogy card (phone mockup) ------------------------------ */
 .rip-modal {
-  position: fixed; inset: 0; z-index: 80;
+  position: fixed; inset: 0; z-index: 140;
   display: flex; align-items: center; justify-content: center;
   background: rgba(12, 12, 60, 0.62); backdrop-filter: blur(4px);
   animation: rip-fade 0.2s ease-out;

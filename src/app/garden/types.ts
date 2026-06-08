@@ -22,6 +22,10 @@ export interface PurgedDesign {
   gardenCoordinates: { x: number; y: number };
   /** Which botanical sprite sprouted (derived from layer volume). */
   plantSpriteIndex: number;
+  /** Downscaled dataURL of the original design, so the dead file can be viewed. */
+  image?: string;
+  /** Which character defended the design in the arena. */
+  defendedBy?: string;
 }
 
 /** The signature the Smash Arena hands off when the Heartless Client is defeated. */
@@ -29,4 +33,7 @@ export interface BattleDNA {
   fileName: string;
   layerCount: number;
   colorPalette: string[];
+  /** Downscaled dataURL of the design that was fought over. */
+  image?: string;
+  defendedBy?: string;
 }

@@ -1,0 +1,189 @@
+/* ===========================================================================
+   RIP Designs — app shell screens (start → garden → add → character → arena → bloom)
+   Depends on the design tokens declared in garden.css.
+   =========================================================================== */
+.rip-shell { position: fixed; inset: 0; z-index: 100; pointer-events: none; }
+.rip-shell > * { pointer-events: auto; }
+
+.rip-screen {
+  position: fixed; inset: 0; z-index: 120;
+  display: flex; flex-direction: column; align-items: center;
+  font-family: var(--rip-hand); color: var(--rip-ink);
+  overflow: hidden;
+}
+
+/* declutter the engine chrome while the arena is live */
+body.rip-arena .panel,
+body.rip-arena .head,
+body.rip-arena .tip,
+body.rip-arena .fig-side,
+body.rip-arena .fig-rul-top,
+body.rip-arena .fig-rul-left,
+body.rip-arena .fig-help { display: none !important; }
+
+/* ---- Start / login ----------------------------------------------------- */
+.rip-start {
+  justify-content: center; text-align: center;
+  background: radial-gradient(130% 100% at 50% 0%, var(--rip-indigo) 0%, var(--rip-indigo-deep) 55%, var(--rip-indigo-night) 100%);
+  color: #fff;
+}
+.rip-start-doodles {
+  position: absolute; inset: 0; opacity: 0.5; pointer-events: none;
+  background-image: radial-gradient(rgba(255,255,255,0.55) 1px, transparent 1.5px);
+  background-size: 30px 30px;
+  -webkit-mask-image: linear-gradient(180deg, #000, transparent 70%);
+  mask-image: linear-gradient(180deg, #000, transparent 70%);
+}
+.rip-start-inner { position: relative; display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 24px; }
+.rip-start-mark { font-size: 40px; filter: drop-shadow(0 6px 16px rgba(0,0,0,0.4)); }
+.rip-start-title { font-family: var(--rip-script); font-size: 68px; line-height: 0.9; margin: 0; color: #fff; }
+.rip-start-sub { max-width: 340px; font-size: 15px; color: rgba(255,255,255,0.78); line-height: 1.5; }
+.rip-start-btn { margin-top: 8px; background: #fff; color: var(--rip-indigo-deep); border-color: #fff; font-size: 16px; padding: 13px 26px; }
+.rip-start-btn:hover { background: var(--rip-paper); }
+.rip-start-foot { margin-top: 18px; font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: rgba(255,255,255,0.45); }
+
+/* ---- Garden home ------------------------------------------------------- */
+.rip-home {
+  background: linear-gradient(180deg, #eef0f3 0%, #e9ebf0 100%);
+  padding-bottom: 96px;
+}
+.rip-home-top { width: 100%; display: flex; justify-content: center; padding: 22px 0 6px; }
+.rip-year {
+  font-family: var(--rip-hand); font-weight: 800; font-size: 15px; letter-spacing: 0.04em;
+  color: #fff; background: var(--rip-ink); border: none; cursor: pointer;
+  padding: 8px 20px; border-radius: 999px; box-shadow: 0 6px 16px rgba(46,46,201,0.35);
+  transition: transform 0.12s ease;
+}
+.rip-year:hover { transform: translateY(-1px); }
+.rip-home-scroll { flex: 1; width: 100%; overflow-y: auto; padding: 6px 18px 0; display: flex; justify-content: center; }
+.rip-grid-home {
+  width: min(560px, 100%); align-self: flex-start;
+  background-image: radial-gradient(rgba(46,46,201,0.22) 1.5px, transparent 1.8px);
+  border-radius: 0; padding: 8px 4px;
+}
+.rip-home-stats, .rip-home-empty {
+  position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
+  text-align: center; font-size: 13px; color: var(--rip-ink-soft); line-height: 1.5;
+}
+.rip-home-stats b, .rip-home-empty b { color: var(--rip-ink); }
+
+/* ---- Add design / plant memory ----------------------------------------- */
+.rip-add {
+  background: linear-gradient(180deg, #eef0f3 0%, #e9ebf0 100%);
+  padding-bottom: 96px;
+}
+.rip-add-today { width: min(560px, 100%); padding: 22px 20px 0; }
+.rip-add-todaylabel { display: block; text-align: center; font-size: 13px; color: var(--rip-ink-soft); margin-bottom: 8px; }
+.rip-add-recent { display: flex; align-items: flex-end; justify-content: center; gap: 10px; min-height: 56px; }
+.rip-add-todaycell {
+  width: 46px; height: 46px; border-radius: 12px;
+  background: rgba(46,46,201,0.1); box-shadow: inset 0 0 0 1.5px rgba(46,46,201,0.2);
+}
+.rip-add-center { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; }
+.rip-add-plus {
+  width: 86px; height: 86px; border-radius: 50%;
+  border: 2.5px solid var(--rip-ink); background: transparent; color: var(--rip-ink);
+  font-size: 38px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: transform 0.12s ease, background 0.15s ease;
+}
+.rip-add-plus span { transform: translateY(-2px); }
+.rip-add-plus:hover { transform: scale(1.05); background: rgba(46,46,201,0.06); }
+.rip-add-plus:disabled { opacity: 0.5; cursor: default; }
+.rip-add-label { font-size: 16px; font-weight: 700; color: var(--rip-ink); }
+.rip-add-plugin {
+  margin-top: 4px; font-family: var(--rip-hand); font-size: 12.5px;
+  color: var(--rip-ink-soft); background: none; border: none; cursor: pointer;
+  text-decoration: underline; text-underline-offset: 3px;
+}
+.rip-add-plugin:hover { color: var(--rip-ink); }
+.rip-add-err { font-size: 12px; color: #c0392b; }
+
+/* ---- Bottom nav -------------------------------------------------------- */
+.rip-bottomnav {
+  position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 5;
+  display: flex; gap: 10px; padding: 8px;
+  background: var(--rip-paper); border-radius: 18px;
+  box-shadow: 0 10px 28px rgba(46,46,201,0.25), inset 0 0 0 1px var(--rip-paper-edge);
+}
+.rip-navbtn {
+  width: 46px; height: 46px; border-radius: 13px; border: none; cursor: pointer;
+  font-size: 20px; background: transparent; color: var(--rip-ink);
+  display: flex; align-items: center; justify-content: center; transition: background 0.15s ease;
+}
+.rip-navbtn.on { background: rgba(46,46,201,0.12); }
+.rip-navbtn:hover { background: rgba(46,46,201,0.08); }
+
+/* ---- Character select --------------------------------------------------- */
+.rip-char {
+  background: radial-gradient(130% 100% at 50% 0%, var(--rip-indigo) 0%, var(--rip-indigo-deep) 60%, var(--rip-indigo-night) 100%);
+  color: #fff; justify-content: flex-start; padding: 26px 20px 28px; gap: 18px;
+}
+.rip-char-head { width: min(560px, 100%); display: flex; flex-direction: column; gap: 12px; }
+.rip-char-back { align-self: flex-start; }
+.rip-char-title h2 { font-family: var(--rip-script); font-size: 38px; margin: 0; line-height: 0.95; }
+.rip-char-title p { font-size: 13.5px; color: rgba(255,255,255,0.72); margin-top: 4px; max-width: 460px; }
+.rip-char-title b { color: #fff; }
+.rip-char-grid {
+  width: min(560px, 100%); display: grid; grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); gap: 10px;
+}
+.rip-char-card {
+  display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 14px 8px;
+  border-radius: 16px; cursor: pointer; color: #fff;
+  background: rgba(255,255,255,0.07); border: 2px solid transparent; transition: all 0.14s ease;
+}
+.rip-char-card:hover { background: rgba(255,255,255,0.12); transform: translateY(-2px); }
+.rip-char-card.sel { border-color: var(--cc); background: rgba(255,255,255,0.14); box-shadow: 0 0 0 4px rgba(255,255,255,0.08); }
+.rip-char-name { font-size: 12px; font-weight: 800; text-align: center; }
+.rip-char-ability { font-size: 10.5px; color: rgba(255,255,255,0.6); text-align: center; }
+.rip-char-diff { width: min(560px, 100%); display: flex; flex-direction: column; gap: 8px; }
+.rip-char-difflabel { font-size: 12px; color: rgba(255,255,255,0.62); letter-spacing: 0.12em; text-transform: uppercase; }
+.rip-char-diffseg { display: flex; gap: 6px; }
+.rip-char-diffseg button {
+  flex: 1; font-family: var(--rip-hand); font-weight: 700; font-size: 13px; padding: 9px;
+  border-radius: 11px; cursor: pointer; color: rgba(255,255,255,0.7);
+  background: rgba(255,255,255,0.07); border: 1.5px solid transparent; transition: all 0.13s ease;
+}
+.rip-char-diffseg button.on { background: #fff; color: var(--rip-indigo-deep); border-color: #fff; }
+.rip-char-go { margin-top: 4px; font-size: 16px; padding: 14px; width: min(560px, 100%); background: #fff; color: var(--rip-indigo-deep); border-color: #fff; }
+.rip-char-go:hover { background: var(--rip-paper); }
+
+/* ---- Arena overlay ----------------------------------------------------- */
+.rip-arena-overlay { position: fixed; inset: 0; z-index: 60; pointer-events: none; }
+.rip-arena-overlay > * { pointer-events: auto; }
+.rip-arena-banner {
+  position: fixed; top: 16px; left: 50%; transform: translateX(-50%);
+  display: flex; align-items: center; gap: 9px;
+  font-family: var(--rip-hand); font-size: 13px; font-weight: 600; color: #fff;
+  background: rgba(20,20,107,0.86); backdrop-filter: blur(8px);
+  padding: 9px 12px 9px 16px; border-radius: 999px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.4); max-width: 92vw;
+}
+.rip-arena-banner b { color: #ffd23f; }
+.rip-arena-dot { width: 8px; height: 8px; border-radius: 50%; background: #ff4d6d; box-shadow: 0 0 8px #ff4d6d; animation: rip-pulse 1.2s ease-in-out infinite; }
+@keyframes rip-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+.rip-arena-forfeit {
+  margin-left: 4px; width: 24px; height: 24px; border-radius: 50%; border: none; cursor: pointer;
+  background: rgba(255,255,255,0.14); color: #fff; font-size: 13px; line-height: 1;
+}
+.rip-arena-forfeit:hover { background: rgba(255,77,109,0.8); }
+.rip-arena-lost {
+  position: fixed; inset: 0; z-index: 125;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(10,10,40,0.72); backdrop-filter: blur(5px);
+}
+.rip-arena-lostbox {
+  width: min(360px, 90vw); text-align: center; padding: 28px 26px;
+  background: var(--rip-paper); border-radius: 22px; box-shadow: 0 30px 80px rgba(0,0,0,0.5);
+}
+.rip-arena-losttitle { font-family: var(--rip-script); font-size: 30px; color: var(--rip-ink); line-height: 1; }
+.rip-arena-lostbox p { font-size: 13.5px; color: var(--rip-ink-soft); margin: 10px 0 18px; }
+.rip-arena-lostbtns { display: flex; gap: 10px; }
+.rip-arena-lostbtns .rip-btn { flex: 1; }
+
+/* ---- design image in cards / bloom ------------------------------------- */
+.rip-preview-img { max-width: 92%; max-height: 92%; border-radius: 8px; box-shadow: 0 6px 16px rgba(0,0,0,0.18); }
+.rip-bloom-relic {
+  position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+  max-width: 120px; max-height: 78px; border-radius: 8px; opacity: 0.85;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.35);
+}

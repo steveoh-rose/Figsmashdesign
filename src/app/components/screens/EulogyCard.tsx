@@ -44,7 +44,11 @@ export function EulogyCard({
         <div className="rip-phone-notch" />
 
         <div className="rip-phone-preview">
-          <GhostBlueprint design={design} width={108} height={132} className="rip-preview-ghost" />
+          {design.image ? (
+            <img src={design.image} alt={design.fileName} className="rip-preview-img" />
+          ) : (
+            <GhostBlueprint design={design} width={108} height={132} className="rip-preview-ghost" />
+          )}
           <PlantDoodle index={design.plantSpriteIndex} stroke={stroke} fill={fill} size={46} className="rip-preview-plant" />
         </div>
 

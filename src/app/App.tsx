@@ -13,8 +13,9 @@ import { MapSelect } from './components/screens/MapSelect';
 import { ImportDialog } from './components/screens/ImportDialog';
 import { WinScreen } from './components/screens/WinScreen';
 import { PauseMenu } from './components/screens/PauseMenu';
-import { GardenLayer } from './components/GardenLayer';
+import { RipShell } from './components/RipShell';
 import './garden/garden.css';
+import './garden/shell.css';
 
 export default function App() {
   useEffect(() => {
@@ -36,7 +37,7 @@ export default function App() {
       <PauseMenu />
       <FigmaChrome />
       <CharacterArtMounts />
-      <GardenLayer />
+      <RipShell />
     </>
   );
 }
