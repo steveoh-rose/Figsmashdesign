@@ -4,7 +4,11 @@
  * Your mouse cursor IS your avatar. Move it around the canvas to explore
  * rooms. Approach zones to reveal prompts; press Space or click to interact.
  *
- * Rooms: Lobby → Expo Hall (Figma MCP gallery) | The Arcade (4 games) | Lounge
+ * Rooms: Lobby → Expo Hall (live Figma file gallery) | The Arcade (4 games) | Lounge
+ *
+ * Real designs: when run as a Figma plugin (see clubfigma-plugin/), the plugin
+ * sandbox streams thumbnails of the document's frames over postMessage. Outside
+ * a plugin (e.g. the Make web preview) the Expo Hall falls back to mock files.
  */
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
@@ -432,7 +436,7 @@ function drawExpoRoom(ctx: CanvasRenderingContext2D, W: number, H: number, zones
   ctx.fillText('DESIGN EXPO HALL', W / 2, 35);
   ctx.fillStyle = P.muted;
   ctx.font = '7px "Press Start 2P", monospace';
-  ctx.fillText('LIVE FROM FIGMA MCP', W / 2, 50);
+  ctx.fillText('LIVE FROM YOUR FIGMA', W / 2, 50);
 
   // Molding strip
   ctx.fillStyle = P.gold;
@@ -502,7 +506,7 @@ function drawExpoRoom(ctx: CanvasRenderingContext2D, W: number, H: number, zones
       ctx.fillText((file?.name || `FIGMA FILE ${i + 1}`).slice(0, 18).toUpperCase(), z.x + z.w / 2, z.y + z.h + 18);
       ctx.fillStyle = P.purple;
       ctx.font = '7px "Press Start 2P", monospace';
-      ctx.fillText(file?.team || 'VIA FIGMA MCP', z.x + z.w / 2, z.y + z.h + 30);
+      ctx.fillText(file?.team || 'FROM FIGMA', z.x + z.w / 2, z.y + z.h + 30);
       if (file?.lastModified) {
         ctx.fillStyle = P.muted;
         ctx.fillText('UPDATED ' + file.lastModified, z.x + z.w / 2, z.y + z.h + 42);
@@ -687,9 +691,9 @@ function buildArcadeZones(W: number, H: number, playGame: (g: GameId) => void, g
   ];
 }
 
-function buildExpoZones(W: number, H: number, goTo: (r: RoomId) => void, viewFrame: (i: number) => void): Zone[] {
+function buildExpoZones(W: number, H: number, goTo: (r: RoomId) => void, viewFrame: (i: number) => void, frameCount: number): Zone[] {
   const fw = 180, fh = 130;
-  const frames = 6;
+  const frames = Math.max(1, frameCount);
   const perRow = 3;
   const rowH = fh + 80;
   const xStep = (W - 60) / perRow;
@@ -772,9 +776,9 @@ export function ClubFigmaWorld() {
   useEffect(() => {
     if (room === 'lobby')  zonesRef.current = buildLobbyZones(W, H, goTo);
     if (room === 'arcade') zonesRef.current = buildArcadeZones(W, H, playGame, goTo);
-    if (room === 'expo')   zonesRef.current = buildExpoZones(W, H, goTo, viewFrame);
+    if (room === 'expo')   zonesRef.current = buildExpoZones(W, H, goTo, viewFrame, figmaFiles.length);
     if (room === 'lounge') zonesRef.current = buildLoungeZones(W, H, goTo);
-  }, [room, W, H, goTo, playGame, viewFrame]);
+  }, [room, W, H, goTo, playGame, viewFrame, figmaFiles.length]);
 
   // Init NPCs
   useEffect(() => {
@@ -989,7 +993,7 @@ export function ClubFigmaWorld() {
           <div className="cfw-frame-modal-inner" onClick={e => e.stopPropagation()}>
             <div className="cfw-frame-header">
               <span>{figmaFiles[expandedFrame]?.name || `FILE ${expandedFrame + 1}.FIG`}</span>
-              <span className="cfw-frame-team">{figmaFiles[expandedFrame]?.team || 'FIGMA MCP'}</span>
+              <span className="cfw-frame-team">{figmaFiles[expandedFrame]?.team || 'FIGMA'}</span>
               <button onClick={() => setExpandedFrame(null)}>✕</button>
             </div>
             <div className="cfw-frame-preview">
@@ -998,9 +1002,18 @@ export function ClubFigmaWorld() {
                   if (!el) return;
                   const ctx = el.getContext('2d')!;
                   el.width = 600; el.height = 420;
-                  drawPlaceholderFrame(ctx, 0, 0, 600, 420, expandedFrame);
+                  const img = loadedImagesRef.current.get(`frame-${expandedFrame}`);
+                  if (img) {
+                    // letterbox the real thumbnail into the preview
+                    ctx.fillStyle = '#08041a'; ctx.fillRect(0, 0, 600, 420);
+                    const scale = Math.min(600 / img.width, 420 / img.height);
+                    const dw = img.width * scale, dh = img.height * scale;
+                    ctx.drawImage(img, (600 - dw) / 2, (420 - dh) / 2, dw, dh);
+                  } else {
+                    drawPlaceholderFrame(ctx, 0, 0, 600, 420, expandedFrame);
+                  }
                 }} />
-              <div className="cfw-frame-mcp-badge">via Figma MCP ✦</div>
+              <div className="cfw-frame-mcp-badge">live from Figma ✦</div>
             </div>
             <div className="cfw-frame-footer">
               <span>Last modified: {figmaFiles[expandedFrame]?.lastModified || 'unknown'}</span>
