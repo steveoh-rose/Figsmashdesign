@@ -279,7 +279,7 @@ function drawArcadeRoom(ctx: CanvasRenderingContext2D, W: number, H: number, zon
     ctx.fillRect(z.x + 9, z.y + 13, z.w - 18, 52);
     // Screen glow
     const sg = ctx.createRadialGradient(z.x + z.w / 2, z.y + 39, 0, z.x + z.w / 2, z.y + 39, 30);
-    sg.addColorStop(0, (hot ? col : '#222') + 'ee');
+    sg.addColorStop(0, (hot ? col : '#222222') + 'ee');
     sg.addColorStop(1, '#060606');
     ctx.fillStyle = sg;
     ctx.fillRect(z.x + 11, z.y + 15, z.w - 22, 48);
@@ -844,6 +844,7 @@ export function ClubFigmaWorld() {
     let lastT = performance.now();
 
     const frame = (now: number) => {
+      raf = requestAnimationFrame(frame); // schedule next frame first so errors can't kill the loop
       const dt = Math.min((now - lastT) / 1000, 0.05);
       lastT = now;
       tRef.current += dt;
@@ -908,7 +909,6 @@ export function ClubFigmaWorld() {
         ctx.beginPath(); ctx.arc(pt.x, pt.y, r, 0, Math.PI * 2); ctx.fill();
       });
 
-      raf = requestAnimationFrame(frame);
     };
     raf = requestAnimationFrame(frame);
     return () => cancelAnimationFrame(raf);
