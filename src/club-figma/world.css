@@ -22,8 +22,8 @@
 
 /* ── Custom cursor ───────────────────────────────────────────────── */
 .cfw-cursor {
-  position: fixed; pointer-events: none; z-index: 9999;
-  transform: translate(0, 0);
+  position: fixed; left: 0; top: 0; pointer-events: none; z-index: 9999;
+  transform: translate(-200px, -200px);
   will-change: transform;
 }
 .cfw-cursor svg { display: block; filter: drop-shadow(0 0 4px #b48eff88); }
@@ -165,6 +165,7 @@
   display: flex; flex-direction: column;
   background: #0d0718;
   animation: cfw-fadein .18s ease-out;
+  cursor: auto;
 }
 .cfw-game-header {
   display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;
@@ -303,17 +304,18 @@
   text-align: center; pointer-events: none;
 }
 
-/* ── FigSmash redirect ───────────────────────────────────────────── */
+/* ── FigSmash wrap ────────────────────────────────────────────────── */
 .cfw-figsmash-wrap {
   position: fixed; inset: 0; z-index: 90; display: flex; flex-direction: column;
-  background: rgba(13,7,24,0.96);
+  background: #0e0e12;
+  cursor: auto;
 }
-.cfw-smash-redirect {
-  flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px;
-  font-family: 'Press Start 2P', monospace; font-size: 11px; color: #b48eff; text-align: center;
-  line-height: 2;
-}
-.cfw-smash-redirect kbd {
-  font-family: inherit; font-size: 10px; color: #f5c842;
-  background: #2a1446; border: 1px solid #3d1f5e; padding: 2px 8px;
+/*
+  FigSmash DOM is rendered inside this wrap, which creates a stacking context at z=90.
+  All child fixed elements inherit that stacking context so they appear above Club Figma.
+  The header needs explicit z-index > the game canvas to appear on top.
+*/
+.cfw-figsmash-wrap .cfw-game-header {
+  position: relative; z-index: 100; flex-shrink: 0;
+  border-bottom: 2px solid #3d1f5e;
 }

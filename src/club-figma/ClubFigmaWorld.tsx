@@ -12,6 +12,17 @@ import { FigHero } from './games/FigHero';
 import { FigContrast } from './games/FigContrast';
 import { FigAlign } from './games/FigAlign';
 import { useConsole, type CartridgeId } from './console/store';
+import { GameCanvas } from '../app/components/GameCanvas';
+import { HudHeader } from '../app/components/HudHeader';
+import { CharacterSelect } from '../app/components/screens/CharacterSelect';
+import { MapSelect } from '../app/components/screens/MapSelect';
+import { WinScreen } from '../app/components/screens/WinScreen';
+import { PauseMenu } from '../app/components/screens/PauseMenu';
+import { ForceQuitDialog } from '../app/components/ForceQuitDialog';
+import { Toolbar } from '../app/components/Toolbar';
+import { ImportDialog } from '../app/components/screens/ImportDialog';
+import { mountEngine } from '../app/game/engine';
+import '../styles/figsmash.css';
 import './world.css';
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -716,6 +727,7 @@ const MOCK_FILES: FigmaFile[] = [
 
 export function ClubFigmaWorld() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const cursorDivRef = useRef<HTMLDivElement>(null);
   const cursorRef = useRef({ x: -200, y: -200 });
   const trailRef = useRef<Array<{ x: number; y: number }>>([]);
   const npcRef = useRef<NPC[]>([]);
@@ -772,25 +784,38 @@ export function ClubFigmaWorld() {
     }));
   }, [room, W, H]);
 
-  // Try Figma plugin bridge for real files
+  // Try Figma plugin bridge for real files + load thumbnails into canvas images
   useEffect(() => {
     if (room !== 'expo') return;
     try {
       window.parent.postMessage({ pluginMessage: { type: 'GET_TEAM_FILES' } }, '*');
     } catch { /* not in plugin context */ }
     const onMsg = (e: MessageEvent) => {
-      if (e.data?.pluginMessage?.type === 'TEAM_FILES') {
-        setFigmaFiles(e.data.pluginMessage.files);
-      }
+      const payload = e.data?.pluginMessage;
+      if (payload?.type !== 'TEAM_FILES') return;
+      const files: FigmaFile[] = payload.files;
+      if (!files?.length) return;
+      setFigmaFiles(files);
+      // Pre-load thumbnails so the canvas can drawImage() them
+      files.forEach((f, i) => {
+        if (!f.thumbnail) return;
+        const img = new Image();
+        img.onload = () => { loadedImagesRef.current.set(`frame-${i}`, img); };
+        img.src = f.thumbnail;
+      });
     };
     window.addEventListener('message', onMsg);
     return () => window.removeEventListener('message', onMsg);
   }, [room]);
 
-  // Mouse tracking
+  // Mouse tracking — update cursor position via direct DOM mutation (no re-render)
   const onMouseMove = useCallback((e: React.MouseEvent) => {
     if (activeGameRef.current) return;
-    cursorRef.current = { x: e.clientX, y: e.clientY };
+    const x = e.clientX, y = e.clientY;
+    cursorRef.current = { x, y };
+    if (cursorDivRef.current) {
+      cursorDivRef.current.style.transform = `translate(${x}px, ${y}px)`;
+    }
   }, []);
 
   // Zone detection + interaction on click/space
@@ -889,6 +914,18 @@ export function ClubFigmaWorld() {
     return () => cancelAnimationFrame(raf);
   }, [W, H, room, figmaFiles]);
 
+  // Mount FigSmash engine when the cabinet is activated
+  useEffect(() => {
+    if (activeGame !== 'figsmash') return;
+    // Reset the guard so the engine re-initialises if the player comes back
+    (window as any).__figsmashInited = false;
+    const id = window.setTimeout(() => mountEngine(), 80);
+    return () => {
+      window.clearTimeout(id);
+      (window as any).__figsmashInited = false;
+    };
+  }, [activeGame]);
+
   // Game finish handler
   const onGameExit = useCallback((score: number, secs: number) => {
     if (activeGame && activeGame !== 'figsmash') {
@@ -904,8 +941,8 @@ export function ClubFigmaWorld() {
     <div className="cfw-root" onMouseMove={onMouseMove} onClick={onMouseClick}>
       <canvas ref={canvasRef} className="cfw-canvas" />
 
-      {/* Custom cursor */}
-      <div className="cfw-cursor" style={{ left: cursorRef.current.x, top: cursorRef.current.y }}>
+      {/* Custom cursor — transform updated imperatively in onMouseMove */}
+      <div className="cfw-cursor" ref={cursorDivRef}>
         <svg width="18" height="22" viewBox="0 0 18 22">
           <path d="M1 1 L1 17 L5 13 L7.5 19 L10 18 L7.5 12 L13 12 Z"
             fill="#b48eff" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
@@ -988,17 +1025,22 @@ export function ClubFigmaWorld() {
         </div>
       )}
 
-      {/* FigSmash launches the existing game engine */}
+      {/* FigSmash — render full game DOM, engine mounts via useEffect */}
       {activeGame === 'figsmash' && (
         <div className="cfw-figsmash-wrap">
           <div className="cfw-game-header">
             <span className="cfw-game-title">FIGSMASH</span>
             <button className="cfw-game-eject" onClick={() => setActiveGame(null)}>⎋ EXIT</button>
           </div>
-          <div className="cfw-smash-redirect">
-            <p>FigSmash is running on the main canvas.</p>
-            <p>Press <kbd>ESC</kbd> or click EJECT to return to Club Figma.</p>
-          </div>
+          <HudHeader />
+          <GameCanvas />
+          <CharacterSelect />
+          <MapSelect />
+          <WinScreen />
+          <PauseMenu />
+          <ForceQuitDialog />
+          <ImportDialog />
+          <Toolbar />
         </div>
       )}
     </div>
