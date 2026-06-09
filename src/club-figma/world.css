@@ -1,0 +1,319 @@
+/* ===================================================================
+   Club Figma World — canvas world + overlay styles
+   Font loaded via Google Fonts (Press Start 2P already in globals.css
+   or console.css; we add it here defensively)
+=================================================================== */
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+/* ── Root shell ──────────────────────────────────────────────────── */
+.cfw-root {
+  position: fixed; inset: 0; z-index: 10;
+  overflow: hidden;
+  cursor: none; /* we draw our own cursor */
+  user-select: none;
+  background: #0d0718;
+}
+
+.cfw-canvas {
+  position: absolute; inset: 0;
+  display: block; width: 100%; height: 100%;
+  image-rendering: pixelated;
+}
+
+/* ── Custom cursor ───────────────────────────────────────────────── */
+.cfw-cursor {
+  position: fixed; pointer-events: none; z-index: 9999;
+  transform: translate(0, 0);
+  will-change: transform;
+}
+.cfw-cursor svg { display: block; filter: drop-shadow(0 0 4px #b48eff88); }
+.cfw-cursor-name {
+  position: absolute; top: 18px; left: 14px;
+  font-family: 'Press Start 2P', monospace; font-size: 7px;
+  color: #b48eff;
+  background: rgba(0,0,0,0.7); padding: 2px 5px;
+  white-space: nowrap; pointer-events: none;
+}
+
+/* ── Zone prompt ─────────────────────────────────────────────────── */
+.cfw-prompt {
+  position: fixed; bottom: 70px; left: 50%; transform: translateX(-50%);
+  z-index: 50;
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  background: rgba(10,4,28,0.92);
+  border: 2px solid #3d1f5e;
+  box-shadow: 0 0 0 1px #b48eff44, 3px 3px 0 #0a0418;
+  padding: 10px 20px;
+  animation: cfw-prompt-in 0.18s ease-out;
+  pointer-events: none;
+}
+@keyframes cfw-prompt-in {
+  from { opacity: 0; transform: translateX(-50%) translateY(8px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+.cfw-prompt-hint {
+  font-family: 'Press Start 2P', monospace; font-size: 8px; color: #f5c842;
+  letter-spacing: .1em;
+}
+.cfw-prompt-action {
+  font-family: 'Press Start 2P', monospace; font-size: 7px; color: #8e7aa8;
+}
+.cfw-prompt-action kbd {
+  font-family: inherit; font-size: 7px;
+  color: #e8d5ff; background: #2a1446;
+  border: 1px solid #3d1f5e; padding: 1px 5px;
+}
+.cfw-prompt-hi {
+  font-family: 'Press Start 2P', monospace; font-size: 7px; color: #1abcfe;
+}
+
+/* ── Minimap / room nav ──────────────────────────────────────────── */
+.cfw-minimap {
+  position: fixed; top: 14px; right: 14px; z-index: 60;
+  display: flex; gap: 4px;
+}
+.cfw-mm-btn {
+  display: flex; align-items: center; gap: 5px;
+  font-family: 'Press Start 2P', monospace; font-size: 7px; letter-spacing: .08em;
+  color: #8e7aa8; background: rgba(10,4,28,0.85);
+  border: 1px solid #2a1446; padding: 5px 8px; cursor: pointer;
+  transition: border-color .12s, color .12s;
+  box-shadow: 2px 2px 0 #0a0418;
+}
+.cfw-mm-btn:hover { color: #e8d5ff; border-color: #3d1f5e; }
+.cfw-mm-btn.active { color: #f5c842; border-color: #f5c842; background: rgba(20,10,50,0.9); }
+.cfw-mm-btn span { display: none; }
+@media (min-width: 700px) { .cfw-mm-btn span { display: inline; } }
+
+/* ── Live presence bar ───────────────────────────────────────────── */
+.cfw-presence {
+  position: fixed; bottom: 14px; left: 14px; z-index: 60;
+  display: flex; align-items: center; gap: 10px;
+  background: rgba(10,4,28,0.85); border: 1px solid #2a1446;
+  padding: 5px 12px; box-shadow: 2px 2px 0 #0a0418;
+  pointer-events: none;
+}
+.cfw-presence-label {
+  font-family: 'Press Start 2P', monospace; font-size: 7px; color: #0acf83;
+  animation: cfw-blink 2s step-end infinite;
+}
+@keyframes cfw-blink { 50% { opacity: 0; } }
+.cfw-presence-dot {
+  font-family: 'Press Start 2P', monospace; font-size: 7px; letter-spacing: .04em;
+}
+
+/* ── Expanded frame modal ────────────────────────────────────────── */
+.cfw-frame-modal {
+  position: fixed; inset: 0; z-index: 80;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(4,0,14,0.8);
+  backdrop-filter: blur(4px);
+  cursor: default;
+  animation: cfw-fadein .2s ease-out;
+}
+@keyframes cfw-fadein { from { opacity: 0; } to { opacity: 1; } }
+.cfw-frame-modal-inner {
+  width: min(660px, 92vw);
+  background: #0e0524;
+  border: 2px solid #3d1f5e;
+  box-shadow: 6px 6px 0 #0a0418, 0 0 0 1px #b48eff33;
+  display: flex; flex-direction: column;
+  animation: cfw-slide-up .2s ease-out;
+}
+@keyframes cfw-slide-up { from { transform: translateY(16px); } to { transform: translateY(0); } }
+.cfw-frame-header {
+  display: flex; align-items: center; gap: 10px; padding: 10px 14px;
+  background: #160929; border-bottom: 1px solid #2a1446;
+}
+.cfw-frame-header span:first-child {
+  font-family: 'Press Start 2P', monospace; font-size: 9px; color: #f5c842; flex: 1;
+}
+.cfw-frame-team {
+  font-family: 'Press Start 2P', monospace; font-size: 7px; color: #8e7aa8 !important;
+}
+.cfw-frame-header button {
+  font-family: 'Press Start 2P', monospace; font-size: 10px;
+  color: #b48eff; background: transparent; border: none; cursor: pointer; padding: 2px 6px;
+}
+.cfw-frame-header button:hover { color: #fff; }
+.cfw-frame-preview {
+  position: relative; background: #08041a;
+  border-bottom: 1px solid #2a1446;
+}
+.cfw-frame-canvas { display: block; width: 100%; height: auto; image-rendering: pixelated; }
+.cfw-frame-mcp-badge {
+  position: absolute; top: 8px; right: 10px;
+  font-family: 'Press Start 2P', monospace; font-size: 7px; color: #1abcfe;
+  background: rgba(0,0,0,0.8); padding: 3px 8px;
+  border: 1px solid #1abcfe44;
+}
+.cfw-frame-footer {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 14px;
+  font-family: 'Press Start 2P', monospace; font-size: 7px; color: #5a3f7a;
+}
+.cfw-frame-open {
+  font-family: 'Press Start 2P', monospace; font-size: 7px; color: #b48eff;
+  background: #2a1446; border: 1px solid #3d1f5e; padding: 6px 10px; cursor: pointer;
+  box-shadow: 2px 2px 0 #0a0418;
+}
+.cfw-frame-open:hover { color: #fff; border-color: #b48eff; }
+
+/* ── Game modal ──────────────────────────────────────────────────── */
+.cfw-game-modal {
+  position: fixed; inset: 0; z-index: 90;
+  display: flex; flex-direction: column;
+  background: #0d0718;
+  animation: cfw-fadein .18s ease-out;
+}
+.cfw-game-header {
+  display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;
+  padding: 0 16px; height: 42px;
+  background: #1a0a2e; border-bottom: 2px solid #3d1f5e;
+}
+.cfw-game-title {
+  font-family: 'Press Start 2P', monospace; font-size: 11px; color: #f5c842;
+  letter-spacing: .14em;
+}
+.cfw-game-eject {
+  font-family: 'Press Start 2P', monospace; font-size: 8px; color: #b48eff;
+  background: #2a1446; border: 1px solid #3d1f5e; padding: 6px 10px; cursor: pointer;
+  box-shadow: 2px 2px 0 #0a0418; letter-spacing: .1em;
+}
+.cfw-game-eject:hover { color: #fff; border-color: #b48eff; }
+.cfw-game-screen {
+  flex: 1; position: relative; overflow: hidden;
+  /* dark CRT screen */
+  background: #15161f;
+  background-image: radial-gradient(rgba(255,255,255,0.04) 1px, transparent 1px);
+  background-size: 16px 16px;
+}
+
+/* Game styles from console.css inlined (the fc- classes) */
+:root {
+  --fc-cream: #f2efe6;
+  --fc-paper: #faf8f2;
+  --fc-ink: #1c1c1c;
+  --fc-dim: #6f6b62;
+  --fc-screen: #15161f;
+  --fc-screen-l: #20222e;
+  --fc-yellow: #ffce3a;
+  --fc-teal: #2ec4b6;
+  --fc-coral: #ef5d52;
+  --fc-blue: #4d7cff;
+  --fc-pix: 'Press Start 2P', monospace;
+  --fc-sans: system-ui, sans-serif;
+}
+
+.fc-fighero, .fc-contrast {
+  position: absolute; inset: 0; display: flex; flex-direction: column;
+  padding: 14px 16px; background: var(--fc-screen);
+}
+.fc-fh-hud {
+  display: flex; justify-content: space-between;
+  font-family: var(--fc-pix); font-size: 10px; color: #fff;
+}
+.fc-fh-hud b { color: var(--fc-yellow); }
+.fc-fh-combo { color: var(--fc-yellow); }
+.fc-fh-track {
+  position: relative; flex: 1; margin: 12px auto; width: min(340px, 100%);
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px;
+  background: #0b0c14; border: 2px solid #000; overflow: hidden;
+}
+.fc-fh-lane { position: relative; border-left: 1px solid rgba(255,255,255,0.06); }
+.fc-fh-laneglow { position: absolute; inset: 0; background: var(--lc); opacity: 0; transition: opacity 0.08s; mix-blend-mode: screen; }
+.fc-fh-note {
+  position: absolute; left: 50%; transform: translate(-50%, -50%);
+  width: 78%; aspect-ratio: 1 / 1; max-height: 38px;
+  display: flex; align-items: center; justify-content: center;
+  border: 2px solid #000; box-shadow: 0 3px 0 rgba(0,0,0,0.5);
+}
+.fc-fh-note.miss { opacity: 0.35; filter: grayscale(1); }
+.fc-fh-strike {
+  position: absolute; left: 0; right: 0; height: 4px;
+  background: var(--fc-yellow); box-shadow: 0 0 10px var(--fc-yellow);
+  transform: translateY(-50%);
+}
+.fc-fh-key {
+  position: absolute; bottom: 6px; left: 50%; transform: translateX(-50%);
+  width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;
+  font-family: var(--fc-pix); font-size: 12px; color: var(--lc);
+  border: 2px solid var(--lc); background: rgba(0,0,0,0.4);
+}
+.fc-fh-judge {
+  position: absolute; left: 50%; top: 60%; transform: translateX(-50%);
+  font-family: var(--fc-pix); font-size: 16px; text-shadow: 2px 2px 0 #000;
+  animation: fc-judge 0.4s ease-out forwards; pointer-events: none;
+}
+@keyframes fc-judge {
+  0% { transform: translate(-50%, 8px); opacity: 0; }
+  30% { opacity: 1; }
+  100% { transform: translate(-50%, -10px); opacity: 0; }
+}
+.fc-fh-count {
+  position: absolute; left: 50%; top: 40%; transform: translate(-50%, -50%);
+  font-family: var(--fc-pix); font-size: 48px; color: var(--fc-yellow); text-shadow: 3px 3px 0 #000;
+}
+.fc-fh-foot, .fc-ct-foot {
+  text-align: center; font-family: var(--fc-sans); font-size: 13px; color: #9b988f;
+}
+.fc-fh-foot b { color: var(--fc-yellow); font-family: var(--fc-pix); font-size: 10px; }
+
+.fc-ct-main { flex: 1; display: flex; gap: 16px; align-items: stretch; justify-content: center; padding: 6px 0 4px; min-height: 0; }
+.fc-ct-sliders-v { display: flex; gap: 12px; }
+.fc-vs { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.fc-vs-track { position: relative; width: 26px; flex: 1; border: 2px solid #000; box-shadow: 3px 3px 0 rgba(0,0,0,0.5); cursor: pointer; touch-action: none; }
+.fc-vs-knob { position: absolute; left: 50%; width: 22px; height: 22px; border-radius: 50%; background: #fff; border: 2px solid #000; transform: translate(-50%, 50%); box-shadow: 0 2px 4px rgba(0,0,0,0.5); pointer-events: none; }
+.fc-vs-label { font-family: var(--fc-pix); font-size: 9px; color: #cfcdd6; }
+.fc-ct-big {
+  flex: 1; max-width: 360px; position: relative; border: 2px solid #000;
+  box-shadow: 4px 4px 0 rgba(0,0,0,0.5);
+  display: flex; align-items: center; justify-content: center;
+}
+.fc-ct-ms { font-family: var(--fc-pix); font-size: 26px; color: #fff; text-shadow: 2px 2px 0 rgba(0,0,0,0.5); }
+.fc-ct-ms small { font-size: 11px; opacity: 0.8; margin-left: 3px; }
+.fc-ct-roundscore { font-family: var(--fc-pix); font-size: 34px; text-shadow: 2px 2px 0 #000; }
+.fc-ct-roundscore small { font-size: 12px; }
+.fc-ct-bottom { display: flex; align-items: center; justify-content: space-between; padding: 6px 4px; }
+.fc-ct-instr { font-family: var(--fc-pix); font-size: 9px; color: #9b988f; }
+.fc-ct-submit {
+  width: 48px; height: 48px; border-radius: 50%; cursor: pointer; font-size: 22px; line-height: 1;
+  background: var(--fc-yellow); color: var(--fc-ink); border: 3px solid #000; box-shadow: 3px 3px 0 rgba(0,0,0,0.5);
+}
+.fc-ct-submit:hover:not(:disabled) { transform: translate(-1px,-1px); }
+.fc-ct-submit:disabled { opacity: 0.4; cursor: default; }
+.fc-ct-done { align-items: center; justify-content: center; gap: 18px; }
+.fc-ct-donetitle { font-family: var(--fc-pix); font-size: 13px; color: var(--fc-yellow); }
+.fc-ct-dotrow { display: flex; gap: 10px; }
+.fc-ct-dot { font-family: var(--fc-pix); font-size: 12px; }
+.fc-ct-total { font-family: var(--fc-pix); font-size: 44px; }
+.fc-ct-total small { font-size: 14px; color: #9b988f; }
+.fc-ct-best { font-family: var(--fc-pix); font-size: 10px; color: var(--fc-teal); animation: fc-blink 0.6s steps(1) infinite; }
+@keyframes fc-blink { 50% { opacity: 0; } }
+
+.fc-align-stage { flex: 1; display: flex; align-items: center; justify-content: center; min-height: 0; padding: 6px 0; }
+.fc-align-canvas {
+  position: relative; aspect-ratio: 1; height: 100%; max-height: 340px;
+  background: #0e0f18; border: 2px solid #000; box-shadow: 4px 4px 0 rgba(0,0,0,0.5);
+  touch-action: none;
+}
+.fc-align-canvas svg { width: 100%; height: 100%; display: block; }
+.fc-align-ms, .fc-align-score {
+  position: absolute; left: 0; right: 0; top: 10px; bottom: auto;
+  text-align: center; pointer-events: none;
+}
+
+/* ── FigSmash redirect ───────────────────────────────────────────── */
+.cfw-figsmash-wrap {
+  position: fixed; inset: 0; z-index: 90; display: flex; flex-direction: column;
+  background: rgba(13,7,24,0.96);
+}
+.cfw-smash-redirect {
+  flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px;
+  font-family: 'Press Start 2P', monospace; font-size: 11px; color: #b48eff; text-align: center;
+  line-height: 2;
+}
+.cfw-smash-redirect kbd {
+  font-family: inherit; font-size: 10px; color: #f5c842;
+  background: #2a1446; border: 1px solid #3d1f5e; padding: 2px 8px;
+}
