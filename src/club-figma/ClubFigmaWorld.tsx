@@ -16,6 +16,7 @@ import { FigHero } from './games/FigHero';
 import { FigContrast } from './games/FigContrast';
 import { FigAlign } from './games/FigAlign';
 import { useConsole, type CartridgeId } from './console/store';
+import { FigConsole } from './console/FigConsole';
 import { GameCanvas } from '../app/components/GameCanvas';
 import { HudHeader } from '../app/components/HudHeader';
 import { CharacterSelect } from '../app/components/screens/CharacterSelect';
@@ -1155,14 +1156,28 @@ export function ClubFigmaWorld() {
     <div className="cfw-root" onMouseMove={onMouseMove} onClick={onMouseClick}>
       <canvas ref={canvasRef} className="cfw-canvas" />
 
-      {/* Custom cursor — transform updated imperatively in onMouseMove */}
-      <div className="cfw-cursor" ref={cursorDivRef}>
+      {/* Custom cursor — transform updated imperatively in onMouseMove.
+          Hidden in the Arcade (FigConsole desktop) and in-game, which use a
+          normal pointer. */}
+      <div
+        className="cfw-cursor"
+        ref={cursorDivRef}
+        style={{ display: room === 'arcade' || activeGame ? 'none' : undefined }}
+      >
         <svg width="18" height="22" viewBox="0 0 18 22">
           <path d="M1 1 L1 17 L5 13 L7.5 19 L10 18 L7.5 12 L13 12 Z"
             fill="#b48eff" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
         </svg>
         <span className="cfw-cursor-name">you</span>
       </div>
+
+      {/* The Arcade is the FigConsole "Game Creator Pro" desktop. It hands the
+          chosen cartridge to the existing game overlays (which render above it). */}
+      {room === 'arcade' && !activeGame && (
+        <div onClick={e => e.stopPropagation()} onMouseMove={e => e.stopPropagation()}>
+          <FigConsole onLaunch={(id) => playGame(id as GameId)} onExit={() => goTo('lobby')} />
+        </div>
+      )}
 
       {/* Zone hover prompt */}
       {hoveredZone && !activeGame && expandedFrame === null && (
