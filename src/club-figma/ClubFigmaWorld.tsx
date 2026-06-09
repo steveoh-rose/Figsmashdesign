@@ -64,21 +64,28 @@ interface FigmaFile {
 
 // ── Palette ──────────────────────────────────────────────────────────────────
 
+// Floating-island palette ported from rip-designs-catharsis-garden:
+// teal sky, warm cream paper, ink line-art, soft retro accents.
 const P = {
-  bg:        '#0d0718',
-  floor:     '#f2efe6',
-  floorAlt:  '#e8e3d4',
-  wall:      '#1a0a2e',
-  wallEdge:  '#2d1b4e',
-  gold:      '#f5c842',
-  purple:    '#b48eff',
+  bg:        '#1e404a',  // sky night
+  sky:       '#3a7d8c',
+  skyDeep:   '#2b5e6b',
+  skyNight:  '#1e404a',
+  floor:     '#f3edc8',  // warm cream
+  floorAlt:  '#e7dcae',
+  wall:      '#2b5e6b',
+  wallEdge:  '#3a7d8c',
+  gold:      '#e6c64a',
+  purple:    '#8fcad6',  // cloud (soft accent)
   blue:      '#1abcfe',
-  teal:      '#2ec4b6',
-  coral:     '#ef5d52',
-  green:     '#0acf83',
-  orange:    '#ff9f43',
-  ink:       '#1c1c1c',
-  muted:     '#8e7aa8',
+  teal:      '#5a9b4a',
+  coral:     '#d24b3e',
+  green:     '#5a9b4a',
+  orange:    '#e6a44a',
+  ink:       '#2b2b3a',
+  paper:     '#f3edc8',
+  paperEdge: '#d9d09a',
+  muted:     '#7c8a86',
 };
 
 // ── NPC data ─────────────────────────────────────────────────────────────────
@@ -407,47 +414,48 @@ function drawPlaceholderFrame(ctx: CanvasRenderingContext2D, x: number, y: numbe
 }
 
 function drawExpoRoom(ctx: CanvasRenderingContext2D, W: number, H: number, zones: Zone[], hoveredZoneId: string | null, t: number, figmaFiles: FigmaFile[], loadedImages: Map<string, HTMLImageElement>) {
-  // Background
-  ctx.fillStyle = '#08041a';
+  // Gallery wall (upper) — soft sky gradient
+  const wallGrad = ctx.createLinearGradient(0, 0, 0, H * 0.62);
+  wallGrad.addColorStop(0, P.skyDeep);
+  wallGrad.addColorStop(1, P.sky);
+  ctx.fillStyle = wallGrad;
   ctx.fillRect(0, 0, W, H);
 
-  // Parquet floor (lower 40%)
+  // Dotted graph-paper matrix on the wall (bullet-journal feel)
+  ctx.fillStyle = 'rgba(255,255,255,0.10)';
+  for (let gx = 16; gx < W; gx += 30) {
+    for (let gy = 70; gy < H * 0.6; gy += 30) {
+      ctx.fillRect(gx, gy, 2, 2);
+    }
+  }
+
+  // Parquet floor (lower 40%) — warm cream boards
   const floorY = H * 0.6;
-  ctx.fillStyle = '#160930';
-  ctx.fillRect(0, floorY, W, H - floorY);
   for (let fx = 0; fx < W; fx += 32) {
     for (let fy = floorY; fy < H; fy += 32) {
       const even = (Math.floor(fx / 32) + Math.floor((fy - floorY) / 32)) % 2 === 0;
-      ctx.fillStyle = even ? '#1c0e38' : '#13072a';
+      ctx.fillStyle = even ? P.floor : P.floorAlt;
       ctx.fillRect(fx, fy, 32, 32);
     }
   }
 
-  // Gallery wall (upper 60%)
-  ctx.fillStyle = '#100628';
-  ctx.fillRect(0, 55, W, H * 0.55);
-
-  // Ceiling
-  ctx.fillStyle = P.wall;
+  // Ceiling band (cream paper)
+  ctx.fillStyle = P.paper;
   ctx.fillRect(0, 0, W, 55);
-  ctx.fillStyle = P.purple;
+  ctx.fillStyle = P.ink;
   ctx.font = 'bold 16px "Press Start 2P", monospace';
   ctx.textAlign = 'center';
-  ctx.fillText('DESIGN EXPO HALL', W / 2, 35);
-  ctx.fillStyle = P.muted;
+  ctx.fillText('DESIGN EXPO HALL', W / 2, 32);
+  ctx.fillStyle = P.skyDeep;
   ctx.font = '7px "Press Start 2P", monospace';
-  ctx.fillText('LIVE FROM YOUR FIGMA', W / 2, 50);
-
-  // Molding strip
-  ctx.fillStyle = P.gold;
-  ctx.fillRect(0, 55, W, 4);
-  ctx.fillStyle = '#3d1f5e';
-  ctx.fillRect(0, 59, W, 2);
+  ctx.fillText('LIVE FROM YOUR FIGMA', W / 2, 47);
+  ctx.fillStyle = P.paperEdge;
+  ctx.fillRect(0, 55, W, 2);
 
   // Baseboard
-  ctx.fillStyle = P.wallEdge;
+  ctx.fillStyle = P.paper;
   ctx.fillRect(0, floorY - 6, W, 6);
-  ctx.fillStyle = P.gold;
+  ctx.fillStyle = P.paperEdge;
   ctx.fillRect(0, floorY - 8, W, 2);
 
   // Gallery frames
@@ -463,11 +471,11 @@ function drawExpoRoom(ctx: CanvasRenderingContext2D, W: number, H: number, zones
     ctx.fillStyle = sg;
     ctx.fillRect(z.x - 20, 55, z.w + 40, z.y - 55);
 
-    // Outer frame (gold)
-    ctx.fillStyle = hot ? '#ffd700' : '#7a6000';
+    // Outer frame (cream paper mount)
+    ctx.fillStyle = hot ? P.paper : P.paperEdge;
     ctx.fillRect(z.x - 9, z.y - 9, z.w + 18, z.h + 18);
     // Inner matte
-    ctx.fillStyle = hot ? '#2a1a00' : '#0e0618';
+    ctx.fillStyle = hot ? P.ink : P.skyNight;
     ctx.fillRect(z.x - 5, z.y - 5, z.w + 10, z.h + 10);
 
     // Frame content
@@ -491,29 +499,30 @@ function drawExpoRoom(ctx: CanvasRenderingContext2D, W: number, H: number, zones
 
     // Hot state: expanded label panel
     if (hot) {
-      ctx.shadowColor = '#ffd700';
-      ctx.shadowBlur = 20;
-      ctx.strokeStyle = '#ffd700';
-      ctx.lineWidth = 2;
+      ctx.shadowColor = 'rgba(20,20,60,0.5)';
+      ctx.shadowBlur = 22;
+      ctx.strokeStyle = P.paper;
+      ctx.lineWidth = 3;
       ctx.strokeRect(z.x - 9, z.y - 9, z.w + 18, z.h + 18);
       ctx.shadowBlur = 0;
 
-      ctx.fillStyle = 'rgba(10,4,24,0.92)';
-      ctx.fillRect(z.x, z.y + z.h + 4, z.w, 44);
-      ctx.fillStyle = P.gold;
+      // cream paper label card
+      ctx.fillStyle = P.paper;
+      ctx.fillRect(z.x, z.y + z.h + 6, z.w, 46);
+      ctx.fillStyle = P.ink;
       ctx.font = 'bold 8px "Press Start 2P", monospace';
       ctx.textAlign = 'center';
-      ctx.fillText((file?.name || `FIGMA FILE ${i + 1}`).slice(0, 18).toUpperCase(), z.x + z.w / 2, z.y + z.h + 18);
-      ctx.fillStyle = P.purple;
+      ctx.fillText((file?.name || `FIGMA FILE ${i + 1}`).slice(0, 18).toUpperCase(), z.x + z.w / 2, z.y + z.h + 22);
+      ctx.fillStyle = P.skyDeep;
       ctx.font = '7px "Press Start 2P", monospace';
-      ctx.fillText(file?.team || 'FROM FIGMA', z.x + z.w / 2, z.y + z.h + 30);
+      ctx.fillText((file?.team || 'FROM FIGMA').slice(0, 18), z.x + z.w / 2, z.y + z.h + 34);
       if (file?.lastModified) {
         ctx.fillStyle = P.muted;
-        ctx.fillText('UPDATED ' + file.lastModified, z.x + z.w / 2, z.y + z.h + 42);
+        ctx.fillText('UPDATED ' + file.lastModified, z.x + z.w / 2, z.y + z.h + 45);
       }
     } else {
       // Quiet label
-      ctx.fillStyle = P.muted;
+      ctx.fillStyle = P.paper;
       ctx.font = '7px "Press Start 2P", monospace';
       ctx.textAlign = 'center';
       ctx.fillText((file?.name || `FILE_${i + 1}.FIG`).slice(0, 14).toUpperCase(), z.x + z.w / 2, z.y + z.h + 16);

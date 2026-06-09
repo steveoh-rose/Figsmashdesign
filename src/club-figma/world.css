@@ -1,9 +1,27 @@
 /* ===================================================================
    Club Figma World — canvas world + overlay styles
-   Font loaded via Google Fonts (Press Start 2P already in globals.css
-   or console.css; we add it here defensively)
+   Aesthetic ported from rip-designs-catharsis-garden: a warm "floating
+   island" pixel look — teal sky, cream paper panels, ink line-art, soft
+   rounded pills, Pixelify Sans for UI + Press Start 2P for tiny accents.
 =================================================================== */
-@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;500;600;700&family=Press+Start+2P&display=swap');
+
+:root {
+  --cf-sky:        #3a7d8c;
+  --cf-sky-deep:   #2b5e6b;
+  --cf-sky-night:  #1e404a;
+  --cf-paper:      #f3edc8;
+  --cf-paper-edge: #d9d09a;
+  --cf-ink:        #2b2b3a;
+  --cf-ink-soft:   rgba(43,43,58,0.62);
+  --cf-ink-faint:  rgba(43,43,58,0.18);
+  --cf-red:        #d24b3e;
+  --cf-green:      #5a9b4a;
+  --cf-cloud:      #8fcad6;
+  --cf-yellow:     #e6c64a;
+  --cf-script:     'Pixelify Sans', monospace;
+  --cf-tiny:       'Press Start 2P', monospace;
+}
 
 /* ── Root shell ──────────────────────────────────────────────────── */
 .cfw-root {
@@ -11,7 +29,7 @@
   overflow: hidden;
   cursor: none; /* we draw our own cursor */
   user-select: none;
-  background: #0d0718;
+  background: var(--cf-sky-night);
 }
 
 .cfw-canvas {
@@ -26,24 +44,25 @@
   transform: translate(-200px, -200px);
   will-change: transform;
 }
-.cfw-cursor svg { display: block; filter: drop-shadow(0 0 4px #b48eff88); }
+.cfw-cursor svg { display: block; filter: drop-shadow(0 2px 3px rgba(20,20,60,0.45)); }
 .cfw-cursor-name {
   position: absolute; top: 18px; left: 14px;
-  font-family: 'Press Start 2P', monospace; font-size: 7px;
-  color: #b48eff;
-  background: rgba(0,0,0,0.7); padding: 2px 5px;
+  font-family: var(--cf-script); font-weight: 600; font-size: 11px;
+  color: var(--cf-ink);
+  background: var(--cf-paper); padding: 1px 8px; border-radius: 999px;
+  box-shadow: 0 3px 8px rgba(20,20,60,0.35);
   white-space: nowrap; pointer-events: none;
 }
 
 /* ── Zone prompt ─────────────────────────────────────────────────── */
 .cfw-prompt {
-  position: fixed; bottom: 70px; left: 50%; transform: translateX(-50%);
+  position: fixed; bottom: 76px; left: 50%; transform: translateX(-50%);
   z-index: 50;
-  display: flex; flex-direction: column; align-items: center; gap: 4px;
-  background: rgba(10,4,28,0.92);
-  border: 2px solid #3d1f5e;
-  box-shadow: 0 0 0 1px #b48eff44, 3px 3px 0 #0a0418;
-  padding: 10px 20px;
+  display: flex; flex-direction: column; align-items: center; gap: 5px;
+  background: var(--cf-paper);
+  border-radius: 18px;
+  box-shadow: 0 18px 40px rgba(10,10,60,0.45), inset 0 0 0 1.5px var(--cf-paper-edge);
+  padding: 13px 24px;
   animation: cfw-prompt-in 0.18s ease-out;
   pointer-events: none;
 }
@@ -52,54 +71,57 @@
   to   { opacity: 1; transform: translateX(-50%) translateY(0); }
 }
 .cfw-prompt-hint {
-  font-family: 'Press Start 2P', monospace; font-size: 8px; color: #f5c842;
-  letter-spacing: .1em;
+  font-family: var(--cf-script); font-weight: 700; font-size: 15px; color: var(--cf-ink);
+  letter-spacing: .01em;
 }
 .cfw-prompt-action {
-  font-family: 'Press Start 2P', monospace; font-size: 7px; color: #8e7aa8;
+  font-family: var(--cf-script); font-weight: 500; font-size: 12px; color: var(--cf-ink-soft);
 }
 .cfw-prompt-action kbd {
-  font-family: inherit; font-size: 7px;
-  color: #e8d5ff; background: #2a1446;
-  border: 1px solid #3d1f5e; padding: 1px 5px;
+  font-family: var(--cf-tiny); font-size: 8px;
+  color: var(--cf-paper); background: var(--cf-ink);
+  border-radius: 5px; padding: 3px 6px; margin: 0 1px;
 }
 .cfw-prompt-hi {
-  font-family: 'Press Start 2P', monospace; font-size: 7px; color: #1abcfe;
+  font-family: var(--cf-tiny); font-size: 8px; color: var(--cf-sky-deep);
 }
 
 /* ── Minimap / room nav ──────────────────────────────────────────── */
 .cfw-minimap {
-  position: fixed; top: 14px; right: 14px; z-index: 60;
-  display: flex; gap: 4px;
+  position: fixed; top: 16px; right: 16px; z-index: 60;
+  display: flex; gap: 6px;
+  background: var(--cf-paper);
+  padding: 6px; border-radius: 999px;
+  box-shadow: 0 10px 26px rgba(10,10,60,0.4), inset 0 0 0 1.5px var(--cf-paper-edge);
 }
 .cfw-mm-btn {
-  display: flex; align-items: center; gap: 5px;
-  font-family: 'Press Start 2P', monospace; font-size: 7px; letter-spacing: .08em;
-  color: #8e7aa8; background: rgba(10,4,28,0.85);
-  border: 1px solid #2a1446; padding: 5px 8px; cursor: pointer;
-  transition: border-color .12s, color .12s;
-  box-shadow: 2px 2px 0 #0a0418;
+  display: flex; align-items: center; gap: 6px;
+  font-family: var(--cf-script); font-weight: 700; font-size: 11px; letter-spacing: .04em;
+  color: var(--cf-ink-soft); background: transparent;
+  border: none; padding: 7px 12px; cursor: pointer; border-radius: 999px;
+  transition: background .14s, color .14s, transform .12s;
 }
-.cfw-mm-btn:hover { color: #e8d5ff; border-color: #3d1f5e; }
-.cfw-mm-btn.active { color: #f5c842; border-color: #f5c842; background: rgba(20,10,50,0.9); }
+.cfw-mm-btn:hover { color: var(--cf-ink); transform: translateY(-1px); }
+.cfw-mm-btn.active { color: var(--cf-paper); background: var(--cf-ink); }
 .cfw-mm-btn span { display: none; }
-@media (min-width: 700px) { .cfw-mm-btn span { display: inline; } }
+@media (min-width: 760px) { .cfw-mm-btn span { display: inline; } }
 
 /* ── Live presence bar ───────────────────────────────────────────── */
 .cfw-presence {
-  position: fixed; bottom: 14px; left: 14px; z-index: 60;
+  position: fixed; bottom: 16px; left: 16px; z-index: 60;
   display: flex; align-items: center; gap: 10px;
-  background: rgba(10,4,28,0.85); border: 1px solid #2a1446;
-  padding: 5px 12px; box-shadow: 2px 2px 0 #0a0418;
+  background: var(--cf-paper);
+  padding: 7px 16px; border-radius: 999px;
+  box-shadow: 0 10px 26px rgba(10,10,60,0.4), inset 0 0 0 1.5px var(--cf-paper-edge);
   pointer-events: none;
 }
 .cfw-presence-label {
-  font-family: 'Press Start 2P', monospace; font-size: 7px; color: #0acf83;
+  font-family: var(--cf-tiny); font-size: 8px; color: var(--cf-green);
   animation: cfw-blink 2s step-end infinite;
 }
-@keyframes cfw-blink { 50% { opacity: 0; } }
+@keyframes cfw-blink { 50% { opacity: 0.35; } }
 .cfw-presence-dot {
-  font-family: 'Press Start 2P', monospace; font-size: 7px; letter-spacing: .04em;
+  font-family: var(--cf-script); font-weight: 600; font-size: 12px; letter-spacing: .02em;
 }
 
 /* ── Expanded frame modal ────────────────────────────────────────── */
@@ -113,51 +135,53 @@
 }
 @keyframes cfw-fadein { from { opacity: 0; } to { opacity: 1; } }
 .cfw-frame-modal-inner {
-  width: min(660px, 92vw);
-  background: #0e0524;
-  border: 2px solid #3d1f5e;
-  box-shadow: 6px 6px 0 #0a0418, 0 0 0 1px #b48eff33;
+  width: min(680px, 92vw);
+  background: var(--cf-paper);
+  border-radius: 22px; overflow: hidden;
+  box-shadow: 0 40px 90px rgba(10,10,60,0.55), inset 0 0 0 1.5px var(--cf-paper-edge);
   display: flex; flex-direction: column;
   animation: cfw-slide-up .2s ease-out;
 }
-@keyframes cfw-slide-up { from { transform: translateY(16px); } to { transform: translateY(0); } }
+@keyframes cfw-slide-up { from { transform: translateY(16px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 .cfw-frame-header {
-  display: flex; align-items: center; gap: 10px; padding: 10px 14px;
-  background: #160929; border-bottom: 1px solid #2a1446;
+  display: flex; align-items: center; gap: 10px; padding: 14px 18px;
 }
 .cfw-frame-header span:first-child {
-  font-family: 'Press Start 2P', monospace; font-size: 9px; color: #f5c842; flex: 1;
+  font-family: var(--cf-script); font-weight: 700; font-size: 17px; color: var(--cf-ink); flex: 1;
 }
 .cfw-frame-team {
-  font-family: 'Press Start 2P', monospace; font-size: 7px; color: #8e7aa8 !important;
+  font-family: var(--cf-script); font-weight: 600; font-size: 12px;
+  color: var(--cf-paper) !important; background: var(--cf-sky-deep);
+  padding: 3px 10px; border-radius: 999px;
 }
 .cfw-frame-header button {
-  font-family: 'Press Start 2P', monospace; font-size: 10px;
-  color: #b48eff; background: transparent; border: none; cursor: pointer; padding: 2px 6px;
+  font-family: var(--cf-script); font-size: 18px;
+  color: var(--cf-ink-soft); background: transparent; border: none; cursor: pointer; padding: 2px 6px;
+  line-height: 1;
 }
-.cfw-frame-header button:hover { color: #fff; }
+.cfw-frame-header button:hover { color: var(--cf-ink); }
 .cfw-frame-preview {
-  position: relative; background: #08041a;
-  border-bottom: 1px solid #2a1446;
+  position: relative; margin: 0 18px; border-radius: 14px; overflow: hidden;
+  background: var(--cf-sky-night);
+  box-shadow: inset 0 0 0 1.5px var(--cf-paper-edge);
 }
 .cfw-frame-canvas { display: block; width: 100%; height: auto; image-rendering: pixelated; }
 .cfw-frame-mcp-badge {
-  position: absolute; top: 8px; right: 10px;
-  font-family: 'Press Start 2P', monospace; font-size: 7px; color: #1abcfe;
-  background: rgba(0,0,0,0.8); padding: 3px 8px;
-  border: 1px solid #1abcfe44;
+  position: absolute; top: 10px; right: 10px;
+  font-family: var(--cf-tiny); font-size: 7px; color: var(--cf-ink);
+  background: var(--cf-yellow); padding: 4px 8px; border-radius: 999px;
 }
 .cfw-frame-footer {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 10px 14px;
-  font-family: 'Press Start 2P', monospace; font-size: 7px; color: #5a3f7a;
+  padding: 14px 18px;
+  font-family: var(--cf-script); font-weight: 500; font-size: 12px; color: var(--cf-ink-soft);
 }
 .cfw-frame-open {
-  font-family: 'Press Start 2P', monospace; font-size: 7px; color: #b48eff;
-  background: #2a1446; border: 1px solid #3d1f5e; padding: 6px 10px; cursor: pointer;
-  box-shadow: 2px 2px 0 #0a0418;
+  font-family: var(--cf-script); font-weight: 700; font-size: 13px; color: var(--cf-paper);
+  background: var(--cf-ink); border: none; padding: 9px 16px; cursor: pointer; border-radius: 999px;
+  transition: transform .12s, background .15s;
 }
-.cfw-frame-open:hover { color: #fff; border-color: #b48eff; }
+.cfw-frame-open:hover { background: var(--cf-sky-deep); transform: translateY(-1px); }
 
 /* ── Game modal ──────────────────────────────────────────────────── */
 .cfw-game-modal {
@@ -169,19 +193,19 @@
 }
 .cfw-game-header {
   display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;
-  padding: 0 16px; height: 42px;
-  background: #1a0a2e; border-bottom: 2px solid #3d1f5e;
+  padding: 0 16px; height: 46px;
+  background: var(--cf-paper); box-shadow: inset 0 -1.5px 0 var(--cf-paper-edge);
 }
 .cfw-game-title {
-  font-family: 'Press Start 2P', monospace; font-size: 11px; color: #f5c842;
-  letter-spacing: .14em;
+  font-family: var(--cf-script); font-weight: 700; font-size: 16px; color: var(--cf-ink);
+  letter-spacing: .04em;
 }
 .cfw-game-eject {
-  font-family: 'Press Start 2P', monospace; font-size: 8px; color: #b48eff;
-  background: #2a1446; border: 1px solid #3d1f5e; padding: 6px 10px; cursor: pointer;
-  box-shadow: 2px 2px 0 #0a0418; letter-spacing: .1em;
+  font-family: var(--cf-script); font-weight: 700; font-size: 12px; color: var(--cf-paper);
+  background: var(--cf-ink); border: none; padding: 7px 14px; cursor: pointer; border-radius: 999px;
+  transition: transform .12s, background .15s;
 }
-.cfw-game-eject:hover { color: #fff; border-color: #b48eff; }
+.cfw-game-eject:hover { background: var(--cf-red); transform: translateY(-1px); }
 .cfw-game-screen {
   flex: 1; position: relative; overflow: hidden;
   /* dark CRT screen */
