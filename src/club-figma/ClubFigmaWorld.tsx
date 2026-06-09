@@ -12,11 +12,9 @@
  */
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { FigHero } from './games/FigHero';
-import { FigContrast } from './games/FigContrast';
-import { FigAlign } from './games/FigAlign';
 import { useConsole, type CartridgeId } from './console/store';
 import { FigConsole } from './console/FigConsole';
+// FigSmash brawler DOM — mounted once (hidden) so FigConsole can drive it via RIPArena.
 import { GameCanvas } from '../app/components/GameCanvas';
 import { HudHeader } from '../app/components/HudHeader';
 import { CharacterSelect } from '../app/components/screens/CharacterSelect';
@@ -26,6 +24,8 @@ import { PauseMenu } from '../app/components/screens/PauseMenu';
 import { ForceQuitDialog } from '../app/components/ForceQuitDialog';
 import { Toolbar } from '../app/components/Toolbar';
 import { InspectorPanel } from '../app/components/InspectorPanel';
+import { FigmaChrome } from '../app/components/FigmaChrome';
+import { CharacterArtMounts } from '../app/components/CharacterArtMounts';
 import { ImportDialog } from '../app/components/screens/ImportDialog';
 import { mountEngine } from '../app/game/engine';
 import '../styles/figsmash.css';
@@ -889,13 +889,12 @@ export function ClubFigmaWorld() {
 
   const [room, setRoom] = useState<RoomId>('lobby');
   const [hoveredZone, setHoveredZone] = useState<Zone | null>(null);
-  const [activeGame, setActiveGame] = useState<GameId | null>(null);
   const [expandedFrame, setExpandedFrame] = useState<number | null>(null);
   const [figmaFiles, setFigmaFiles] = useState<FigmaFile[]>(MOCK_FILES);
   const [figmaConfig, setFigmaConfig] = useState<FigmaConfig | null>(null);
   const [showConnect, setShowConnect] = useState(false);
   const [expoStatus, setExpoStatus] = useState<'idle' | 'loading' | 'error'>('idle');
-  const { state: consoleState, submitScore, addTimeSaved } = useConsole();
+  const { state: consoleState } = useConsole();
 
   const figmaConfigRef = useRef(figmaConfig);
   figmaConfigRef.current = figmaConfig;
@@ -931,8 +930,6 @@ export function ClubFigmaWorld() {
 
   const roomRef = useRef(room);
   roomRef.current = room;
-  const activeGameRef = useRef(activeGame);
-  activeGameRef.current = activeGame;
 
   // Rebuild zones when room changes
   const goTo = useCallback((r: RoomId) => {
@@ -940,8 +937,15 @@ export function ClubFigmaWorld() {
     setHoveredZone(null);
     hoveredRef.current = null;
   }, []);
-  const playGame = useCallback((g: GameId) => setActiveGame(g), []);
   const viewFrame = useCallback((i: number) => setExpandedFrame(i), []);
+
+  // Mount the FigSmash brawler engine once, in "RipShell" mode so it stays idle
+  // until FigConsole drives a match through window.RIPArena. Its DOM is rendered
+  // (hidden) below and the engine sizes its canvas from window.innerWidth.
+  useEffect(() => {
+    (window as any).__figsmashRipShell = true;
+    mountEngine();
+  }, []);
 
   const [size, setSize] = useState({ w: window.innerWidth, h: window.innerHeight });
   useEffect(() => {
@@ -955,10 +959,10 @@ export function ClubFigmaWorld() {
   // Rebuild zones when room/size changes
   useEffect(() => {
     if (room === 'lobby')  zonesRef.current = buildLobbyZones(W, H, goTo);
-    if (room === 'arcade') zonesRef.current = buildArcadeZones(W, H, playGame, goTo);
+    if (room === 'arcade') zonesRef.current = [];  // the FigConsole desktop overlay owns the arcade
     if (room === 'expo')   zonesRef.current = buildExpoZones(W, H, goTo, viewFrame, figmaFiles.length);
     if (room === 'lounge') zonesRef.current = buildLoungeZones(W, H, goTo);
-  }, [room, W, H, goTo, playGame, viewFrame, figmaFiles.length]);
+  }, [room, W, H, goTo, viewFrame, figmaFiles.length]);
 
   // Init NPCs
   useEffect(() => {
@@ -1023,9 +1027,10 @@ export function ClubFigmaWorld() {
     return () => { cancelled = true; };
   }, [expandedFrame, figmaFiles]);
 
-  // Mouse tracking — update cursor position via direct DOM mutation (no re-render)
+  // Mouse tracking — update cursor position via direct DOM mutation (no re-render).
+  // The Arcade is a normal-pointer desktop, so skip the world cursor there.
   const onMouseMove = useCallback((e: React.MouseEvent) => {
-    if (activeGameRef.current) return;
+    if (roomRef.current === 'arcade') return;
     const x = e.clientX, y = e.clientY;
     cursorRef.current = { x, y };
     if (cursorDivRef.current) {
@@ -1043,8 +1048,10 @@ export function ClubFigmaWorld() {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      // Don't hijack Space/Esc while the arcade desktop or a game owns input.
+      if (roomRef.current === 'arcade') return;
       if (e.key === ' ') { e.preventDefault(); interact(); }
-      if (e.key === 'Escape') { setActiveGame(null); setExpandedFrame(null); }
+      if (e.key === 'Escape') { setExpandedFrame(null); }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -1129,27 +1136,6 @@ export function ClubFigmaWorld() {
     return () => cancelAnimationFrame(raf);
   }, [W, H, room, figmaFiles]);
 
-  // Mount FigSmash engine when the cabinet is activated
-  useEffect(() => {
-    if (activeGame !== 'figsmash') return;
-    // Reset the guard so the engine re-initialises if the player comes back
-    (window as any).__figsmashInited = false;
-    const id = window.setTimeout(() => mountEngine(), 80);
-    return () => {
-      window.clearTimeout(id);
-      (window as any).__figsmashInited = false;
-    };
-  }, [activeGame]);
-
-  // Game finish handler
-  const onGameExit = useCallback((score: number, secs: number) => {
-    if (activeGame && activeGame !== 'figsmash') {
-      submitScore(activeGame as CartridgeId, score);
-      addTimeSaved(secs);
-    }
-    setActiveGame(null);
-  }, [activeGame, submitScore, addTimeSaved]);
-
   const highScores = consoleState.highScores;
 
   return (
@@ -1157,12 +1143,11 @@ export function ClubFigmaWorld() {
       <canvas ref={canvasRef} className="cfw-canvas" />
 
       {/* Custom cursor — transform updated imperatively in onMouseMove.
-          Hidden in the Arcade (FigConsole desktop) and in-game, which use a
-          normal pointer. */}
+          Hidden in the Arcade (FigConsole desktop) which uses a normal pointer. */}
       <div
         className="cfw-cursor"
         ref={cursorDivRef}
-        style={{ display: room === 'arcade' || activeGame ? 'none' : undefined }}
+        style={{ display: room === 'arcade' ? 'none' : undefined }}
       >
         <svg width="18" height="22" viewBox="0 0 18 22">
           <path d="M1 1 L1 17 L5 13 L7.5 19 L10 18 L7.5 12 L13 12 Z"
@@ -1171,16 +1156,33 @@ export function ClubFigmaWorld() {
         <span className="cfw-cursor-name">you</span>
       </div>
 
-      {/* The Arcade is the FigConsole "Game Creator Pro" desktop. It hands the
-          chosen cartridge to the existing game overlays (which render above it). */}
-      {room === 'arcade' && !activeGame && (
+      {/* The FigSmash brawler DOM — mounted once, hidden until FigConsole starts
+          a match (body.fc-smash reveals it). Keeps the engine's refs stable. */}
+      <div className="cf-figsmash-host">
+        <GameCanvas />
+        <HudHeader />
+        <InspectorPanel />
+        <Toolbar />
+        <ForceQuitDialog />
+        <CharacterSelect />
+        <MapSelect />
+        <ImportDialog />
+        <WinScreen />
+        <PauseMenu />
+        <FigmaChrome />
+        <CharacterArtMounts />
+      </div>
+
+      {/* The Arcade is the FigConsole "Game Creator Pro" desktop. It runs the
+          games itself (FigSmash via the engine above; the rest inline). */}
+      {room === 'arcade' && (
         <div onClick={e => e.stopPropagation()} onMouseMove={e => e.stopPropagation()}>
-          <FigConsole onLaunch={(id) => playGame(id as GameId)} onExit={() => goTo('lobby')} />
+          <FigConsole onExit={() => goTo('lobby')} />
         </div>
       )}
 
       {/* Zone hover prompt */}
-      {hoveredZone && !activeGame && expandedFrame === null && (
+      {hoveredZone && expandedFrame === null && (
         <div className="cfw-prompt">
           <span className="cfw-prompt-hint">{hoveredZone.hint}</span>
           <span className="cfw-prompt-action">
@@ -1272,42 +1274,6 @@ export function ClubFigmaWorld() {
         </div>
       )}
 
-      {/* Arcade game modal */}
-      {activeGame && activeGame !== 'figsmash' && (
-        <div className="cfw-game-modal">
-          <div className="cfw-game-header">
-            <span className="cfw-game-title">
-              {activeGame === 'fighero' ? 'FIGHERO' : activeGame === 'figcontrast' ? 'FIGCONTRAST' : 'FIGALIGN'}
-            </span>
-            <button className="cfw-game-eject" onClick={() => setActiveGame(null)}>⎋ EJECT</button>
-          </div>
-          <div className="cfw-game-screen">
-            {activeGame === 'fighero'    && <FigHero    highScore={highScores.fighero}    onExit={onGameExit} />}
-            {activeGame === 'figcontrast' && <FigContrast highScore={highScores.figcontrast} onExit={onGameExit} />}
-            {activeGame === 'figalign'   && <FigAlign   highScore={highScores.figalign}   onExit={onGameExit} />}
-          </div>
-        </div>
-      )}
-
-      {/* FigSmash — render full game DOM, engine mounts via useEffect */}
-      {activeGame === 'figsmash' && (
-        <div className="cfw-figsmash-wrap">
-          <div className="cfw-game-header">
-            <span className="cfw-game-title">FIGSMASH</span>
-            <button className="cfw-game-eject" onClick={() => setActiveGame(null)}>⎋ EXIT</button>
-          </div>
-          <HudHeader />
-          <GameCanvas />
-          <InspectorPanel />
-          <CharacterSelect />
-          <MapSelect />
-          <WinScreen />
-          <PauseMenu />
-          <ForceQuitDialog />
-          <ImportDialog />
-          <Toolbar />
-        </div>
-      )}
     </div>
   );
 }
