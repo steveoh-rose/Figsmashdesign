@@ -172,6 +172,17 @@
   font-family: var(--cf-tiny); font-size: 7px; color: var(--cf-ink);
   background: var(--cf-yellow); padding: 4px 8px; border-radius: 999px;
 }
+.cfw-frame-change {
+  margin: 12px 18px 0; padding: 10px 12px;
+  background: rgba(210,75,62,0.10); border-radius: 12px;
+  display: flex; flex-direction: column; gap: 3px;
+}
+.cfw-frame-change-label {
+  font-family: var(--cf-tiny); font-size: 7px; color: var(--cf-red); letter-spacing: .08em;
+}
+.cfw-frame-change-text {
+  font-family: var(--cf-script); font-weight: 600; font-size: 14px; color: var(--cf-ink); line-height: 1.4;
+}
 .cfw-frame-footer {
   display: flex; align-items: center; justify-content: space-between;
   padding: 14px 18px;

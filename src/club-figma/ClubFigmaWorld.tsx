@@ -62,6 +62,8 @@ interface FigmaFile {
   thumbnail?: string;
   lastModified?: string;
   url?: string;     // deep link to open in Figma
+  change?: string;  // "what changed since the last version" (from version history)
+  author?: string;  // who last edited
 }
 
 interface FigmaConfig {
@@ -124,7 +126,44 @@ async function fetchOrgFiles(cfg: FigmaConfig, limit = 12): Promise<FigmaFile[]>
     } catch { /* skip project */ }
   }
   all.sort((a, b) => ((b as any)._ts || 0) - ((a as any)._ts || 0));
-  return all.slice(0, limit);
+  const top = all.slice(0, limit);
+
+  // For the files we'll actually show, read their version history and summarise
+  // "what changed since the last version" for the gallery item footer.
+  await Promise.all(top.map(async (f) => {
+    const c = await fetchFileChange(cfg, f.key);
+    if (c.change) f.change = c.change;
+    if (c.author) f.author = c.author;
+  }));
+  return top;
+}
+
+// Summarise the most recent change to a file from its version history. Prefers a
+// named version's label/description; falls back to who last edited + when.
+async function fetchFileChange(cfg: FigmaConfig, key: string): Promise<{ change?: string; author?: string }> {
+  try {
+    const r = await fetch(`https://api.figma.com/v1/files/${key}/versions`, { headers: { 'X-Figma-Token': cfg.token } });
+    if (!r.ok) return {};
+    const data = await r.json();
+    const versions: Array<{ label?: string; description?: string; created_at?: string; user?: { handle?: string } }> = data.versions || [];
+    if (!versions.length) return {};
+    const named = versions.find((v) => (v.label && v.label.trim()) || (v.description && v.description.trim()));
+    const v = named || versions[0];
+    const who = v.user?.handle;
+    const note = (v.description || v.label || '').trim().replace(/\s+/g, ' ');
+    const change = note || (who ? `${who} made edits` : `edited ${relTime(v.created_at)}`);
+    return { change, author: who };
+  } catch {
+    return {};
+  }
+}
+
+// Trim canvas text to fit a pixel width, adding an ellipsis.
+function fitText(ctx: CanvasRenderingContext2D, text: string, maxW: number): string {
+  if (ctx.measureText(text).width <= maxW) return text;
+  let s = text;
+  while (s.length > 1 && ctx.measureText(s + '…').width > maxW) s = s.slice(0, -1);
+  return s + '…';
 }
 
 // Render a crisp, full-res screenshot of a file's first frame for the expanded
@@ -589,6 +628,11 @@ function drawExpoRoom(ctx: CanvasRenderingContext2D, W: number, H: number, zones
       ctx.fillText(`FETCHING${dots}`, z.x + z.w / 2, z.y + z.h - 6);
     }
 
+    // Changelog footer — "what changed since the last version"
+    const changeLine = file?.change
+      ? (file.author ? `${file.author}: ${file.change}` : file.change)
+      : (file?.lastModified ? `updated ${file.lastModified}` : '');
+
     // Hot state: expanded label panel
     if (hot) {
       ctx.shadowColor = 'rgba(20,20,60,0.5)';
@@ -600,7 +644,7 @@ function drawExpoRoom(ctx: CanvasRenderingContext2D, W: number, H: number, zones
 
       // cream paper label card
       ctx.fillStyle = P.paper;
-      ctx.fillRect(z.x, z.y + z.h + 6, z.w, 46);
+      ctx.fillRect(z.x, z.y + z.h + 6, z.w, 58);
       ctx.fillStyle = P.ink;
       ctx.font = 'bold 8px "Press Start 2P", monospace';
       ctx.textAlign = 'center';
@@ -612,12 +656,23 @@ function drawExpoRoom(ctx: CanvasRenderingContext2D, W: number, H: number, zones
         ctx.fillStyle = P.muted;
         ctx.fillText('UPDATED ' + file.lastModified, z.x + z.w / 2, z.y + z.h + 45);
       }
+      // change blurb (sans-serif for readability)
+      if (changeLine) {
+        ctx.fillStyle = P.coral;
+        ctx.font = '600 11px "Pixelify Sans", monospace';
+        ctx.fillText('✎ ' + fitText(ctx, changeLine, z.w - 8), z.x + z.w / 2, z.y + z.h + 58);
+      }
     } else {
-      // Quiet label
+      // Quiet label + change footer
       ctx.fillStyle = P.paper;
       ctx.font = '7px "Press Start 2P", monospace';
       ctx.textAlign = 'center';
       ctx.fillText((file?.name || `FILE_${i + 1}.FIG`).slice(0, 14).toUpperCase(), z.x + z.w / 2, z.y + z.h + 16);
+      if (changeLine) {
+        ctx.fillStyle = 'rgba(255,255,255,0.72)';
+        ctx.font = '600 11px "Pixelify Sans", monospace';
+        ctx.fillText('✎ ' + fitText(ctx, changeLine, z.w + 24), z.x + z.w / 2, z.y + z.h + 32);
+      }
     }
   });
 
@@ -866,12 +921,12 @@ function buildLoungeZones(W: number, H: number, goTo: (r: RoomId) => void): Zone
 // ── Mock Figma files (shown while MCP loads) ──────────────────────────────────
 
 const MOCK_FILES: FigmaFile[] = [
-  { key: '1', name: 'Design System v4', team: 'Core UI', lastModified: '2h ago' },
-  { key: '2', name: 'Mobile App Flows', team: 'Mobile', lastModified: '4h ago' },
-  { key: '3', name: 'Marketing Site 2026', team: 'Growth', lastModified: 'just now' },
-  { key: '4', name: 'Checkout Redesign', team: 'Commerce', lastModified: '1d ago' },
-  { key: '5', name: 'Brand Tokens v2', team: 'Design Ops', lastModified: '3h ago' },
-  { key: '6', name: 'Onboarding V3', team: 'Core UX', lastModified: '30m ago' },
+  { key: '1', name: 'Design System v4',   team: 'Core UI',    lastModified: '2h ago',   author: 'maya_c',   change: 'Reworked button + input tokens' },
+  { key: '2', name: 'Mobile App Flows',   team: 'Mobile',     lastModified: '4h ago',   author: 'rx_ux',    change: 'Added dark-mode onboarding' },
+  { key: '3', name: 'Marketing Site 2026',team: 'Growth',     lastModified: 'just now', author: 'p.lim',    change: 'New hero + pricing section' },
+  { key: '4', name: 'Checkout Redesign',  team: 'Commerce',   lastModified: '1d ago',   author: 'devops_j', change: 'Split payment step into 2' },
+  { key: '5', name: 'Brand Tokens v2',    team: 'Design Ops', lastModified: '3h ago',   author: 'alex_d',   change: 'Renamed colour ramps' },
+  { key: '6', name: 'Onboarding V3',      team: 'Core UX',    lastModified: '30m ago',  author: 'maya_c',   change: 'Trimmed to 3 steps' },
 ];
 
 // ── Connect-your-org panel ────────────────────────────────────────────────────
@@ -1338,6 +1393,15 @@ export function ClubFigmaWorld() {
               )}
               <div className="cfw-frame-mcp-badge">live from Figma ✦</div>
             </div>
+            {(figmaFiles[expandedFrame]?.change) && (
+              <div className="cfw-frame-change">
+                <span className="cfw-frame-change-label">✎ WHAT CHANGED</span>
+                <span className="cfw-frame-change-text">
+                  {figmaFiles[expandedFrame]?.author ? `${figmaFiles[expandedFrame]?.author} — ` : ''}
+                  {figmaFiles[expandedFrame]?.change}
+                </span>
+              </div>
+            )}
             <div className="cfw-frame-footer">
               <span>Last modified: {figmaFiles[expandedFrame]?.lastModified || 'unknown'}</span>
               <button
