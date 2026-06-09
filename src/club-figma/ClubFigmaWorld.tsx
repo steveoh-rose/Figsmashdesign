@@ -72,6 +72,15 @@ interface FigmaConfig {
 // Default team id for this workspace (overridable in the Connect panel).
 const DEFAULT_TEAM_ID = '976058076181350431';
 
+// ── Explorer camera (Cursor Camp feel) ───────────────────────────────────────
+// Each room is a world larger than the viewport; the camera zooms in on the
+// avatar and pans as you move, like Cursor Camp / Club Penguin.
+const WORLD_SCALE = 1.6;   // world is this much bigger than the screen
+const ZOOM = 1.4;          // how far the camera zooms in on the cursor
+const SPRING_K = 150;      // cursor follow stiffness (FigSmash-style spring)
+const SPRING_DAMP = 19;    // cursor follow damping
+const clamp = (v: number, lo: number, hi: number) => (v < lo ? lo : v > hi ? hi : v);
+
 function relTime(iso?: string): string {
   if (!iso) return '';
   const diff = Date.now() - new Date(iso).getTime();
@@ -745,15 +754,59 @@ function drawNPCs(ctx: CanvasRenderingContext2D, npcs: NPC[]) {
     ctx.lineTo(npc.x + 9, npc.y + 9.2);
     ctx.closePath();
     ctx.fill(); ctx.stroke();
-    // Name tag
-    ctx.fillStyle = 'rgba(0,0,0,0.7)';
-    const tw = ctx.measureText(npc.name).width;
-    ctx.fillRect(npc.x + 12, npc.y - 8, tw + 8, 14);
-    ctx.fillStyle = npc.color;
+    // Name tag (cream pill)
     ctx.font = '9px "Press Start 2P", monospace';
+    const tw = ctx.measureText(npc.name).width;
+    ctx.fillStyle = '#f3edc8';
+    roundRect(ctx, npc.x + 12, npc.y - 6, tw + 12, 16, 8); ctx.fill();
+    ctx.fillStyle = '#2b2b3a';
     ctx.textAlign = 'left';
-    ctx.fillText(npc.name, npc.x + 16, npc.y + 2);
+    ctx.fillText(npc.name, npc.x + 18, npc.y + 6);
   });
+}
+
+function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+// The player avatar: a cursor in cloud-blue, drawn in world space with its trail.
+function drawPlayer(ctx: CanvasRenderingContext2D, x: number, y: number, trail: Array<{ x: number; y: number }>) {
+  trail.forEach((pt, i) => {
+    const f = 1 - i / trail.length;
+    ctx.fillStyle = `rgba(143,202,214,${f * 0.4})`;
+    ctx.beginPath(); ctx.arc(pt.x, pt.y, 4 * f, 0, Math.PI * 2); ctx.fill();
+  });
+  // drop shadow
+  ctx.fillStyle = 'rgba(20,20,60,0.25)';
+  ctx.beginPath(); ctx.ellipse(x + 3, y + 18, 8, 3, 0, 0, Math.PI * 2); ctx.fill();
+  // cursor shape
+  ctx.fillStyle = '#8fcad6';
+  ctx.strokeStyle = '#2b2b3a';
+  ctx.lineWidth = 1.6;
+  ctx.beginPath();
+  ctx.moveTo(x, y);
+  ctx.lineTo(x, y + 16);
+  ctx.lineTo(x + 4, y + 11.5);
+  ctx.lineTo(x + 6.8, y + 17);
+  ctx.lineTo(x + 8.6, y + 16.1);
+  ctx.lineTo(x + 5.7, y + 10.6);
+  ctx.lineTo(x + 10.3, y + 10.6);
+  ctx.closePath();
+  ctx.fill(); ctx.stroke();
+  // "you" pill
+  ctx.font = '9px "Press Start 2P", monospace';
+  const tw = ctx.measureText('you').width;
+  ctx.fillStyle = '#2b2b3a';
+  roundRect(ctx, x + 13, y + 6, tw + 12, 16, 8); ctx.fill();
+  ctx.fillStyle = '#f3edc8';
+  ctx.textAlign = 'left';
+  ctx.fillText('you', x + 19, y + 18);
 }
 
 // ── Zone builders ─────────────────────────────────────────────────────────────
@@ -878,8 +931,9 @@ function ConnectPanel({ config, status, onSave, onClose }: {
 
 export function ClubFigmaWorld() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const cursorDivRef = useRef<HTMLDivElement>(null);
-  const cursorRef = useRef({ x: -200, y: -200 });
+  const mouseRef = useRef({ x: -9999, y: -9999 });                  // screen-space mouse
+  const avatarRef = useRef({ x: 0, y: 0, vx: 0, vy: 0 });           // world-space avatar (springs to mouse)
+  const camRef = useRef({ x: 0, y: 0 });                            // world-space camera top-left
   const trailRef = useRef<Array<{ x: number; y: number }>>([]);
   const npcRef = useRef<NPC[]>([]);
   const tRef = useRef(0);
@@ -955,24 +1009,30 @@ export function ClubFigmaWorld() {
   }, []);
 
   const W = size.w, H = size.h;
+  // The explorable world is larger than the viewport.
+  const worldW = Math.round(W * WORLD_SCALE), worldH = Math.round(H * WORLD_SCALE);
 
-  // Rebuild zones when room/size changes
+  // Rebuild zones when room/size changes (laid out in world space)
   useEffect(() => {
-    if (room === 'lobby')  zonesRef.current = buildLobbyZones(W, H, goTo);
+    if (room === 'lobby')  zonesRef.current = buildLobbyZones(worldW, worldH, goTo);
     if (room === 'arcade') zonesRef.current = [];  // the FigConsole desktop overlay owns the arcade
-    if (room === 'expo')   zonesRef.current = buildExpoZones(W, H, goTo, viewFrame, figmaFiles.length);
-    if (room === 'lounge') zonesRef.current = buildLoungeZones(W, H, goTo);
-  }, [room, W, H, goTo, viewFrame, figmaFiles.length]);
+    if (room === 'expo')   zonesRef.current = buildExpoZones(worldW, worldH, goTo, viewFrame, figmaFiles.length);
+    if (room === 'lounge') zonesRef.current = buildLoungeZones(worldW, worldH, goTo);
+  }, [room, worldW, worldH, goTo, viewFrame, figmaFiles.length]);
 
-  // Init NPCs
+  // Init NPCs + recentre the avatar/camera when the room (or size) changes.
   useEffect(() => {
     npcRef.current = NPC_DEFS.slice(0, 4).map((d, i) => ({
       id: i, name: d.name, color: d.color,
-      x: 100 + Math.random() * (W - 200), y: 100 + Math.random() * (H - 200),
-      tx: 100 + Math.random() * (W - 200), ty: 100 + Math.random() * (H - 200),
+      x: 120 + Math.random() * (worldW - 240), y: 140 + Math.random() * (worldH - 280),
+      tx: 120 + Math.random() * (worldW - 240), ty: 140 + Math.random() * (worldH - 280),
       trail: [], idleTimer: 0,
     }));
-  }, [room, W, H]);
+    avatarRef.current = { x: worldW / 2, y: worldH / 2, vx: 0, vy: 0 };
+    camRef.current = { x: clamp(worldW / 2 - W / ZOOM / 2, 0, Math.max(0, worldW - W / ZOOM)),
+                       y: clamp(worldH / 2 - H / ZOOM / 2, 0, Math.max(0, worldH - H / ZOOM)) };
+    trailRef.current = [];
+  }, [room, worldW, worldH, W, H]);
 
   // Plugin bridge: receive stored connection config + current-file frames.
   useEffect(() => {
@@ -1027,15 +1087,11 @@ export function ClubFigmaWorld() {
     return () => { cancelled = true; };
   }, [expandedFrame, figmaFiles]);
 
-  // Mouse tracking — update cursor position via direct DOM mutation (no re-render).
-  // The Arcade is a normal-pointer desktop, so skip the world cursor there.
+  // Mouse tracking — the mouse steers the avatar (which springs toward it in
+  // world space). The Arcade is a normal-pointer desktop, so skip it there.
   const onMouseMove = useCallback((e: React.MouseEvent) => {
     if (roomRef.current === 'arcade') return;
-    const x = e.clientX, y = e.clientY;
-    cursorRef.current = { x, y };
-    if (cursorDivRef.current) {
-      cursorDivRef.current.style.transform = `translate(${x}px, ${y}px)`;
-    }
+    mouseRef.current = { x: e.clientX, y: e.clientY };
   }, []);
 
   // Zone detection + interaction on click/space
@@ -1065,6 +1121,8 @@ export function ClubFigmaWorld() {
     let raf = 0;
     let lastT = performance.now();
 
+    const viewW = W / ZOOM, viewH = H / ZOOM;   // visible world region
+
     const frame = (now: number) => {
       raf = requestAnimationFrame(frame); // schedule next frame first so errors can't kill the loop
       const dt = Math.min((now - lastT) / 1000, 0.05);
@@ -1075,15 +1133,15 @@ export function ClubFigmaWorld() {
       const ctx = canvas.getContext('2d')!;
       ctx.clearRect(0, 0, W, H);
 
-      // Update NPC positions
+      // Update NPC positions (world space)
       npcRef.current = npcRef.current.map(npc => {
         const dx = npc.tx - npc.x, dy = npc.ty - npc.y;
         const dist = Math.hypot(dx, dy);
         let { x, y, tx, ty, trail, idleTimer } = npc;
         idleTimer -= dt;
         if (dist < 8 || idleTimer <= 0) {
-          tx = 80 + Math.random() * (W - 160);
-          ty = 100 + Math.random() * (H - 160);
+          tx = 80 + Math.random() * (worldW - 160);
+          ty = 120 + Math.random() * (worldH - 200);
           idleTimer = 2 + Math.random() * 4;
         } else {
           const spd = 55;
@@ -1094,47 +1152,66 @@ export function ClubFigmaWorld() {
         return { ...npc, x, y, tx, ty, trail: newTrail, idleTimer };
       });
 
-      // Detect hovered zone
-      const cur = cursorRef.current;
+      const cam = camRef.current;
+      const a = avatarRef.current;
+      const m = mouseRef.current;
+
+      // The mouse points to a world location through the current camera; the
+      // avatar springs toward it (FigSmash-style weighted follow).
+      if (m.x > -9000) {
+        const tx = cam.x + m.x / ZOOM;
+        const ty = cam.y + m.y / ZOOM;
+        const ax = (tx - a.x) * SPRING_K - a.vx * SPRING_DAMP;
+        const ay = (ty - a.y) * SPRING_K - a.vy * SPRING_DAMP;
+        a.vx += ax * dt; a.vy += ay * dt;
+        a.x += a.vx * dt; a.y += a.vy * dt;
+      }
+      a.x = clamp(a.x, 8, worldW - 8);
+      a.y = clamp(a.y, 8, worldH - 8);
+
+      // Camera edge-scroll: keep the avatar inside a margin, then clamp to world.
+      const margin = Math.min(viewW, viewH) * 0.3;
+      if (a.x - cam.x < margin) cam.x = a.x - margin;
+      else if (a.x - cam.x > viewW - margin) cam.x = a.x - (viewW - margin);
+      if (a.y - cam.y < margin) cam.y = a.y - margin;
+      else if (a.y - cam.y > viewH - margin) cam.y = a.y - (viewH - margin);
+      cam.x = clamp(cam.x, 0, Math.max(0, worldW - viewW));
+      cam.y = clamp(cam.y, 0, Math.max(0, worldH - viewH));
+
+      // Detect hovered zone (avatar vs world-space zone rects)
       let newHover: string | null = null;
       for (const z of zonesRef.current) {
         if (z.type === 'deco') continue;
-        if (cur.x >= z.x && cur.x <= z.x + z.w && cur.y >= z.y && cur.y <= z.y + z.h) {
-          newHover = z.id; break;
-        }
+        if (a.x >= z.x && a.x <= z.x + z.w && a.y >= z.y && a.y <= z.y + z.h) { newHover = z.id; break; }
       }
       if (newHover !== hoveredRef.current) {
         hoveredRef.current = newHover;
-        const zone = zonesRef.current.find(z => z.id === newHover) || null;
-        setHoveredZone(zone);
+        setHoveredZone(zonesRef.current.find(z => z.id === newHover) || null);
       }
 
-      // Update player cursor trail
-      trailRef.current = [{ ...cur }, ...trailRef.current.slice(0, 16)];
+      // Player trail (world space)
+      trailRef.current = [{ x: a.x, y: a.y }, ...trailRef.current.slice(0, 16)];
 
-      // Draw room
+      // Draw the world through the camera (zoom + pan)
+      ctx.save();
+      ctx.scale(ZOOM, ZOOM);
+      ctx.translate(-cam.x, -cam.y);
+
       const zones = zonesRef.current;
       const hid = hoveredRef.current;
-      if (roomRef.current === 'lobby')  drawLobbyRoom(ctx, W, H, zones, hid, t);
-      if (roomRef.current === 'arcade') drawArcadeRoom(ctx, W, H, zones, hid, t);
-      if (roomRef.current === 'expo')   drawExpoRoom(ctx, W, H, zones, hid, t, figmaFiles, loadedImagesRef.current);
-      if (roomRef.current === 'lounge') drawLoungeRoom(ctx, W, H, zones, hid, t);
+      if (roomRef.current === 'lobby')  drawLobbyRoom(ctx, worldW, worldH, zones, hid, t);
+      if (roomRef.current === 'arcade') drawArcadeRoom(ctx, worldW, worldH, zones, hid, t);
+      if (roomRef.current === 'expo')   drawExpoRoom(ctx, worldW, worldH, zones, hid, t, figmaFiles, loadedImagesRef.current);
+      if (roomRef.current === 'lounge') drawLoungeRoom(ctx, worldW, worldH, zones, hid, t);
 
-      // Draw NPC cursors
       drawNPCs(ctx, npcRef.current);
+      if (roomRef.current !== 'arcade') drawPlayer(ctx, a.x, a.y, trailRef.current);
 
-      // Draw player cursor trail (behind cursor)
-      trailRef.current.forEach((pt, i) => {
-        const alpha = (1 - i / trailRef.current.length) * 0.45;
-        const r = 4 * (1 - i / trailRef.current.length);
-        ctx.fillStyle = `rgba(180,142,255,${alpha})`;
-        ctx.beginPath(); ctx.arc(pt.x, pt.y, r, 0, Math.PI * 2); ctx.fill();
-      });
-
+      ctx.restore();
     };
     raf = requestAnimationFrame(frame);
     return () => cancelAnimationFrame(raf);
-  }, [W, H, room, figmaFiles]);
+  }, [W, H, worldW, worldH, room, figmaFiles]);
 
   const highScores = consoleState.highScores;
 
@@ -1142,19 +1219,8 @@ export function ClubFigmaWorld() {
     <div className="cfw-root" onMouseMove={onMouseMove} onClick={onMouseClick}>
       <canvas ref={canvasRef} className="cfw-canvas" />
 
-      {/* Custom cursor — transform updated imperatively in onMouseMove.
-          Hidden in the Arcade (FigConsole desktop) which uses a normal pointer. */}
-      <div
-        className="cfw-cursor"
-        ref={cursorDivRef}
-        style={{ display: room === 'arcade' ? 'none' : undefined }}
-      >
-        <svg width="18" height="22" viewBox="0 0 18 22">
-          <path d="M1 1 L1 17 L5 13 L7.5 19 L10 18 L7.5 12 L13 12 Z"
-            fill="#b48eff" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
-        </svg>
-        <span className="cfw-cursor-name">you</span>
-      </div>
+      {/* The player avatar is drawn on the canvas (drawPlayer) so the camera can
+          zoom + pan it like Cursor Camp. The OS cursor stays hidden via CSS. */}
 
       {/* The FigSmash brawler DOM — mounted once, hidden until FigConsole starts
           a match (body.fc-smash reveals it). Keeps the engine's refs stable. */}
