@@ -1,37 +1,35 @@
 /**
- * Cartridge 4 — FigAlign: transform-memory puzzle.
- * Ported from rip-designs-catharsis-garden branch.
+ * Cartridge 4 — FigAlign: a transform-memory game. A target box animates out
+ * from the centre showing its position / size / rotation, then a millisecond
+ * timer ticks down (clicking) and it hides. You rebuild it by direct
+ * manipulation — drag the body to move, drag a corner to resize, drag just
+ * outside a corner to rotate. Score /100 each round, five rounds → total /500.
+ * Original implementation; no external assets, code, or branding.
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 const ROUNDS = 5;
 const PEEK_MS = 2600;
-const VB = 240;
-const C = VB / 2;
+const VB = 240;            // square viewBox
+const C = VB / 2;          // centre
 const MIN_H = 12, MAX_H = 95;
 
 type Phase = 'peek' | 'dial' | 'result' | 'done';
-interface Box { cx: number; cy: number; hw: number; hh: number; rot: number; }
+interface Box { cx: number; cy: number; hw: number; hh: number; rot: number; } // rot deg
 
 function rand() { return Math.random(); }
 function clamp(v: number, a: number, b: number) { return Math.max(a, Math.min(b, v)); }
 function newTarget(): Box {
   return { cx: 55 + rand() * 130, cy: 55 + rand() * 130, hw: 22 + rand() * 30, hh: 22 + rand() * 30, rot: rand() * 180 };
 }
-function rotPt(x: number, y: number, deg: number) {
-  const a = (deg * Math.PI) / 180, c = Math.cos(a), s = Math.sin(a);
-  return { x: x * c - y * s, y: x * s + y * c };
-}
+function rotPt(x: number, y: number, deg: number) { const a = (deg * Math.PI) / 180, c = Math.cos(a), s = Math.sin(a); return { x: x * c - y * s, y: x * s + y * c }; }
 function corners(b: Box) {
-  return ([[-1, -1], [1, -1], [1, 1], [-1, 1]] as const).map(([sx, sy]) => {
-    const r = rotPt(sx * b.hw, sy * b.hh, b.rot);
-    return { x: b.cx + r.x, y: b.cy + r.y };
-  });
+  return ([[-1, -1], [1, -1], [1, 1], [-1, 1]] as const).map(([sx, sy]) => { const r = rotPt(sx * b.hw, sy * b.hh, b.rot); return { x: b.cx + r.x, y: b.cy + r.y }; });
 }
-const RESIZE_R = 15;
-const ROTATE_R = 30;
+const RESIZE_R = 15;   // grab a corner within this radius
+const ROTATE_R = 30;   // rotate when within this ring just outside the edges
 const CORNER_SGN = [[-1, -1], [1, -1], [1, 1], [-1, 1]] as const;
-
+// Which interaction a point maps to, given the current box.
 function zoneAt(b: Box, px: number, py: number): { mode: '' | 'resize' | 'rotate' | 'move'; corner: number } {
   const cs = corners(b);
   let best = 0, bd = 1e9;
@@ -40,7 +38,7 @@ function zoneAt(b: Box, px: number, py: number): { mode: '' | 'resize' | 'rotate
   const lo = rotPt(px - b.cx, py - b.cy, -b.rot);
   const isIn = Math.abs(lo.x) <= b.hw && Math.abs(lo.y) <= b.hh;
   const outDist = Math.hypot(Math.max(0, Math.abs(lo.x) - b.hw), Math.max(0, Math.abs(lo.y) - b.hh));
-  if (!isIn && outDist <= ROTATE_R) return { mode: 'rotate', corner: -1 };
+  if (!isIn && outDist <= ROTATE_R) return { mode: 'rotate', corner: -1 };  // near the edge, just outside
   if (isIn) return { mode: 'move', corner: -1 };
   return { mode: '', corner: -1 };
 }
@@ -53,8 +51,9 @@ function scoreOf(t: Box, g: Box) {
   return Math.round(100 * Math.max(0, 0.4 * posScore + 0.3 * sizeScore + 0.3 * rotScore));
 }
 
+// --- audio ---
 let actx: AudioContext | null = null;
-function audio() { if (!actx) { try { actx = new (window.AudioContext || (window as any).webkitAudioContext)(); } catch { /**/ } } return actx; }
+function audio() { if (!actx) { try { actx = new (window.AudioContext || (window as any).webkitAudioContext)(); } catch { /* */ } } return actx; }
 function tone(freq: number, dur: number, type: OscillatorType = 'square', vol = 0.16) {
   const a = audio(); if (!a) return;
   const o = a.createOscillator(), g = a.createGain();
@@ -68,7 +67,7 @@ const MEL = [69, 74, 78, 74, 71, 76, 81, 76, 67, 72, 76, 72, 69, 65, 62, 0];
 const BASS = [45, 45, 41, 41, 38, 38, 43, 43, 45, 45, 41, 41, 40, 40, 36, 36];
 function startMusic() {
   const a = audio(); if (!a) return null;
-  try { a.resume(); } catch { /**/ }
+  try { a.resume(); } catch { /* */ }
   const stepDur = 0.22; let step = 0, next = a.currentTime + 0.1;
   const t2 = (f: number, t: number, d: number, ty: OscillatorType, v: number) => {
     const o = a.createOscillator(), g = a.createGain();
@@ -124,6 +123,7 @@ export function FigAlign({ highScore, onExit }: { highScore: number; onExit: (sc
 
   useEffect(() => { const m = startMusic(); return () => m?.stop(); }, []);
 
+  // peek: animate target out from centre, tick ms, click
   useEffect(() => {
     if (phase !== 'peek') return;
     let raf = 0; const t0 = performance.now(); let lastClick = -1; click();
@@ -151,6 +151,7 @@ export function FigAlign({ highScore, onExit }: { highScore: number; onExit: (sc
     if (drag.mode === 'move') { sh.cx = clamp(p.x - drag.offx, 8, VB - 8); sh.cy = clamp(p.y - drag.offy, 8, VB - 8); }
     else if (drag.mode === 'rotate') { const ang = (Math.atan2(p.y - sh.cy, p.x - sh.cx) * 180) / Math.PI; sh.rot = drag.startRot + (ang - drag.startAng); }
     else if (drag.mode === 'resize') {
+      // proportional: scale both extents uniformly along the diagonal, opposite corner anchored.
       const a = drag.anchor, u = rotPt(1, 0, drag.rot0), v = rotPt(0, 1, drag.rot0);
       const dx = p.x - a.x, dy = p.y - a.y, du = dx * u.x + dy * u.y, dv = dx * v.x + dy * v.y;
       const diag = Math.hypot(drag.hw0, drag.hh0);
@@ -234,6 +235,7 @@ export function FigAlign({ highScore, onExit }: { highScore: number; onExit: (sc
     );
   }
 
+  // target shown during peek, growing out of the centre
   const grown: Box = { cx: C + (target.cx - C) * grow, cy: C + (target.cy - C) * grow, hw: target.hw * grow, hh: target.hh * grow, rot: target.rot };
 
   return (
@@ -243,10 +245,10 @@ export function FigAlign({ highScore, onExit }: { highScore: number; onExit: (sc
         <span>TOTAL <b>{total.toString().padStart(3, '0')}</b></span>
         <span>HI <b>{Math.max(highScore, total).toString().padStart(3, '0')}</b></span>
       </div>
+
       <div className="fc-align-stage">
         <div className="fc-align-canvas">
-          <svg ref={svgRef} viewBox={`0 0 ${VB} ${VB}`} onPointerDown={onDown} onPointerMove={onHover}
-            onPointerLeave={() => setHoverMode('')}
+          <svg ref={svgRef} viewBox={`0 0 ${VB} ${VB}`} onPointerDown={onDown} onPointerMove={onHover} onPointerLeave={() => setHoverMode('')}
             style={{ touchAction: 'none', cursor: zoneCursor(dragMode || hoverMode) }}>
             {phase === 'peek' && <BoxShape b={grown} fill={ACCENT} />}
             {phase !== 'peek' && <BoxShape b={guess} fill={ACCENT} handles={phase === 'dial' && !!(dragMode || hoverMode)} />}
@@ -256,6 +258,7 @@ export function FigAlign({ highScore, onExit }: { highScore: number; onExit: (sc
           {phase === 'result' && <div className="fc-ct-roundscore fc-align-score" style={{ color: scoreCol(lastScore) }}>{lastScore}<small>/100</small></div>}
         </div>
       </div>
+
       <div className="fc-ct-bottom">
         <span className="fc-ct-instr">{phase === 'peek' ? 'MEMORISE THE BOX…' : 'drag · corner = resize · outside corner = rotate'}</span>
         <button className="fc-ct-submit" onClick={() => submitRef.current()} disabled={phase !== 'dial'} title="Lock in (Enter)">◎</button>

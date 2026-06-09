@@ -1,3 +1,8 @@
+/**
+ * FigConsole 67 — persistent state: per-cartridge high scores and the headline
+ * "Time Saved While Waiting" counter (seconds spent in the console instead of
+ * doom-scrolling while a stakeholder reviews your file).
+ */
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 const KEY = 'figconsole67.v1';
@@ -21,17 +26,25 @@ function load(): ConsoleState {
       const p = JSON.parse(raw);
       return { ...DEFAULT, ...p, highScores: { ...DEFAULT.highScores, ...(p.highScores || {}) } };
     }
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
   return { ...DEFAULT, highScores: { ...DEFAULT.highScores } };
 }
 
 function save(s: ConsoleState) {
-  try { localStorage.setItem(KEY, JSON.stringify(s)); } catch { /* ignore */ }
+  try {
+    localStorage.setItem(KEY, JSON.stringify(s));
+  } catch {
+    /* ignore */
+  }
 }
 
 export interface ConsoleApi {
   state: ConsoleState;
+  /** Record a finished run; bumps high score if beaten. */
   submitScore: (id: CartridgeId, score: number) => boolean;
+  /** Add seconds to the Time Saved headline counter. */
   addTimeSaved: (sec: number) => void;
 }
 
@@ -63,6 +76,7 @@ export function useConsole(): ConsoleApi {
   return { state, submitScore, addTimeSaved };
 }
 
+/** Live wall-clock tick (for the desktop clock), updated every 10s. */
 export function useClock(): Date {
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {

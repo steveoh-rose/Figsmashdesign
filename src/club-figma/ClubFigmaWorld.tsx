@@ -24,6 +24,7 @@ import { InspectorPanel } from '../app/components/InspectorPanel';
 import { ImportDialog } from '../app/components/screens/ImportDialog';
 import { mountEngine } from '../app/game/engine';
 import '../styles/figsmash.css';
+import './console/console.css';
 import './world.css';
 
 // ── Types ────────────────────────────────────────────────────────────────────

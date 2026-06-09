@@ -18,7 +18,7 @@ export function FigmaChrome() {
         </div>
         <div className="file">
           <b>
-            Fig Smash{' '}
+            RIP Designs{' '}
             <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#8c8c8c" strokeWidth="2.4">
               <path d="M6 9l6 6 6-6" />
             </svg>

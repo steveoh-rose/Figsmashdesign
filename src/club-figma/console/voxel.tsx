@@ -1,3 +1,9 @@
+/**
+ * Chunky "extruded pixel" voxel art for the cartridges. A flat pixel sprite is
+ * pushed back-and-down at 45°, drawing darker right/bottom faces only on the
+ * silhouette — giving the 3D voxel look from the reference shots.
+ */
+
 function shade(hex: string, f: number): string {
   const n = parseInt(hex.slice(1), 16);
   const r = Math.round(((n >> 16) & 255) * f);
@@ -26,21 +32,34 @@ function VoxelSprite({ grid, palette, size = 76 }: { grid: string[]; palette: Re
   }
   return (
     <svg width={size} height={size * (totalH / totalW)} viewBox={`0 0 ${totalW} ${totalH}`} style={{ imageRendering: 'pixelated', overflow: 'visible' }} aria-hidden="true">
-      {sides}{fronts}
+      {sides}
+      {fronts}
     </svg>
   );
 }
 
 const C = { coral: '#ef5d52', blue: '#4d7cff', teal: '#2ec4b6', white: '#ffffff', ink: '#1c1c1c' };
 
+// FigSmash — the Unaligned Stakeholder as a voxel ghost.
 const GHOST = ['..rrrrr..', '.rrrrrrr.', 'rrrrrrrrr', 'rwwrrwwrr', 'rwkrrwkrr', 'rrrrrrrrr', 'rrrrrrrrr', 'rrrrrrrrr', 'r.rr.rr.r'];
-export const VoxelGhost = ({ size }: { size?: number }) => <VoxelSprite grid={GHOST} palette={{ r: C.coral, w: C.white, k: C.ink }} size={size} />;
+export const VoxelGhost = ({ size }: { size?: number }) => (
+  <VoxelSprite grid={GHOST} palette={{ r: C.coral, w: C.white, k: C.ink }} size={size} />
+);
 
+// FigHero — a chipper voxel smiley.
 const SMILEY = ['..bbbbb..', '.bbbbbbb.', 'bbbbbbbbb', 'bbwbbbwbb', 'bbbbbbbbb', 'bwbbbbbwb', 'bbwwwwwbb', '.bbbbbbb.', '..bbbbb..'];
-export const VoxelSmiley = ({ size }: { size?: number }) => <VoxelSprite grid={SMILEY} palette={{ b: C.blue, w: C.white }} size={size} />;
+export const VoxelSmiley = ({ size }: { size?: number }) => (
+  <VoxelSprite grid={SMILEY} palette={{ b: C.blue, w: C.white }} size={size} />
+);
 
+// FigContrast — a voxel eye (the design eye).
 const EYE = ['.........', '..ttttt..', '.ttttttt.', 'ttwwwwwtt', 'twwkkkwwt', 'ttwwwwwtt', '.ttttttt.', '..ttttt..', '.........'];
-export const VoxelEye = ({ size }: { size?: number }) => <VoxelSprite grid={EYE} palette={{ t: C.teal, w: C.white, k: C.ink }} size={size} />;
+export const VoxelEye = ({ size }: { size?: number }) => (
+  <VoxelSprite grid={EYE} palette={{ t: C.teal, w: C.white, k: C.ink }} size={size} />
+);
 
+// FigAlign — a voxel triangle (the shape).
 const TRI = ['....o....', '....o....', '...ooo...', '...ooo...', '..ooooo..', '..ooooo..', '.ooooooo.', 'ooooooooo', 'ooooooooo'];
-export const VoxelTriangle = ({ size }: { size?: number }) => <VoxelSprite grid={TRI} palette={{ o: '#ff9f43' }} size={size} />;
+export const VoxelTriangle = ({ size }: { size?: number }) => (
+  <VoxelSprite grid={TRI} palette={{ o: '#ff9f43' }} size={size} />
+);

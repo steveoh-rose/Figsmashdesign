@@ -190,119 +190,12 @@
   background-size: 16px 16px;
 }
 
-/* Game styles from console.css inlined (the fc- classes) */
-:root {
-  --fc-cream: #f2efe6;
-  --fc-paper: #faf8f2;
-  --fc-ink: #1c1c1c;
-  --fc-dim: #6f6b62;
-  --fc-screen: #15161f;
-  --fc-screen-l: #20222e;
-  --fc-yellow: #ffce3a;
-  --fc-teal: #2ec4b6;
-  --fc-coral: #ef5d52;
-  --fc-blue: #4d7cff;
-  --fc-pix: 'Press Start 2P', monospace;
-  --fc-sans: system-ui, sans-serif;
-}
-
-.fc-fighero, .fc-contrast {
-  position: absolute; inset: 0; display: flex; flex-direction: column;
-  padding: 14px 16px; background: var(--fc-screen);
-}
-.fc-fh-hud {
-  display: flex; justify-content: space-between;
-  font-family: var(--fc-pix); font-size: 10px; color: #fff;
-}
-.fc-fh-hud b { color: var(--fc-yellow); }
-.fc-fh-combo { color: var(--fc-yellow); }
-.fc-fh-track {
-  position: relative; flex: 1; margin: 12px auto; width: min(340px, 100%);
-  display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px;
-  background: #0b0c14; border: 2px solid #000; overflow: hidden;
-}
-.fc-fh-lane { position: relative; border-left: 1px solid rgba(255,255,255,0.06); }
-.fc-fh-laneglow { position: absolute; inset: 0; background: var(--lc); opacity: 0; transition: opacity 0.08s; mix-blend-mode: screen; }
-.fc-fh-note {
-  position: absolute; left: 50%; transform: translate(-50%, -50%);
-  width: 78%; aspect-ratio: 1 / 1; max-height: 38px;
-  display: flex; align-items: center; justify-content: center;
-  border: 2px solid #000; box-shadow: 0 3px 0 rgba(0,0,0,0.5);
-}
-.fc-fh-note.miss { opacity: 0.35; filter: grayscale(1); }
-.fc-fh-strike {
-  position: absolute; left: 0; right: 0; height: 4px;
-  background: var(--fc-yellow); box-shadow: 0 0 10px var(--fc-yellow);
-  transform: translateY(-50%);
-}
-.fc-fh-key {
-  position: absolute; bottom: 6px; left: 50%; transform: translateX(-50%);
-  width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;
-  font-family: var(--fc-pix); font-size: 12px; color: var(--lc);
-  border: 2px solid var(--lc); background: rgba(0,0,0,0.4);
-}
-.fc-fh-judge {
-  position: absolute; left: 50%; top: 60%; transform: translateX(-50%);
-  font-family: var(--fc-pix); font-size: 16px; text-shadow: 2px 2px 0 #000;
-  animation: fc-judge 0.4s ease-out forwards; pointer-events: none;
-}
-@keyframes fc-judge {
-  0% { transform: translate(-50%, 8px); opacity: 0; }
-  30% { opacity: 1; }
-  100% { transform: translate(-50%, -10px); opacity: 0; }
-}
-.fc-fh-count {
-  position: absolute; left: 50%; top: 40%; transform: translate(-50%, -50%);
-  font-family: var(--fc-pix); font-size: 48px; color: var(--fc-yellow); text-shadow: 3px 3px 0 #000;
-}
-.fc-fh-foot, .fc-ct-foot {
-  text-align: center; font-family: var(--fc-sans); font-size: 13px; color: #9b988f;
-}
-.fc-fh-foot b { color: var(--fc-yellow); font-family: var(--fc-pix); font-size: 10px; }
-
-.fc-ct-main { flex: 1; display: flex; gap: 16px; align-items: stretch; justify-content: center; padding: 6px 0 4px; min-height: 0; }
-.fc-ct-sliders-v { display: flex; gap: 12px; }
-.fc-vs { display: flex; flex-direction: column; align-items: center; gap: 6px; }
-.fc-vs-track { position: relative; width: 26px; flex: 1; border: 2px solid #000; box-shadow: 3px 3px 0 rgba(0,0,0,0.5); cursor: pointer; touch-action: none; }
-.fc-vs-knob { position: absolute; left: 50%; width: 22px; height: 22px; border-radius: 50%; background: #fff; border: 2px solid #000; transform: translate(-50%, 50%); box-shadow: 0 2px 4px rgba(0,0,0,0.5); pointer-events: none; }
-.fc-vs-label { font-family: var(--fc-pix); font-size: 9px; color: #cfcdd6; }
-.fc-ct-big {
-  flex: 1; max-width: 360px; position: relative; border: 2px solid #000;
-  box-shadow: 4px 4px 0 rgba(0,0,0,0.5);
-  display: flex; align-items: center; justify-content: center;
-}
-.fc-ct-ms { font-family: var(--fc-pix); font-size: 26px; color: #fff; text-shadow: 2px 2px 0 rgba(0,0,0,0.5); }
-.fc-ct-ms small { font-size: 11px; opacity: 0.8; margin-left: 3px; }
-.fc-ct-roundscore { font-family: var(--fc-pix); font-size: 34px; text-shadow: 2px 2px 0 #000; }
-.fc-ct-roundscore small { font-size: 12px; }
-.fc-ct-bottom { display: flex; align-items: center; justify-content: space-between; padding: 6px 4px; }
-.fc-ct-instr { font-family: var(--fc-pix); font-size: 9px; color: #9b988f; }
-.fc-ct-submit {
-  width: 48px; height: 48px; border-radius: 50%; cursor: pointer; font-size: 22px; line-height: 1;
-  background: var(--fc-yellow); color: var(--fc-ink); border: 3px solid #000; box-shadow: 3px 3px 0 rgba(0,0,0,0.5);
-}
-.fc-ct-submit:hover:not(:disabled) { transform: translate(-1px,-1px); }
-.fc-ct-submit:disabled { opacity: 0.4; cursor: default; }
-.fc-ct-done { align-items: center; justify-content: center; gap: 18px; }
-.fc-ct-donetitle { font-family: var(--fc-pix); font-size: 13px; color: var(--fc-yellow); }
-.fc-ct-dotrow { display: flex; gap: 10px; }
-.fc-ct-dot { font-family: var(--fc-pix); font-size: 12px; }
-.fc-ct-total { font-family: var(--fc-pix); font-size: 44px; }
-.fc-ct-total small { font-size: 14px; color: #9b988f; }
-.fc-ct-best { font-family: var(--fc-pix); font-size: 10px; color: var(--fc-teal); animation: fc-blink 0.6s steps(1) infinite; }
-@keyframes fc-blink { 50% { opacity: 0; } }
-
-.fc-align-stage { flex: 1; display: flex; align-items: center; justify-content: center; min-height: 0; padding: 6px 0; }
-.fc-align-canvas {
-  position: relative; aspect-ratio: 1; height: 100%; max-height: 340px;
-  background: #0e0f18; border: 2px solid #000; box-shadow: 4px 4px 0 rgba(0,0,0,0.5);
-  touch-action: none;
-}
-.fc-align-canvas svg { width: 100%; height: 100%; display: block; }
-.fc-align-ms, .fc-align-score {
-  position: absolute; left: 0; right: 0; top: 10px; bottom: auto;
-  text-align: center; pointer-events: none;
-}
+/*
+  Game styles (the fc-* classes for FigHero / FigContrast / FigAlign) now
+  live in ./console/console.css, imported by ClubFigmaWorld.tsx and kept in
+  sync with the rip-designs-catharsis-garden source. Do not re-inline them
+  here — that caused drift when the games were updated.
+*/
 
 /* ── FigSmash wrap ────────────────────────────────────────────────── */
 .cfw-figsmash-wrap {

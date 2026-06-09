@@ -1,0 +1,286 @@
+/* ===========================================================================
+   FigConsole 67 — retro desktop OS with a modern twist.
+   Cream graph-paper desktop, classic pinstripe window, bright primary accents,
+   Space Grotesk content + Press Start 2P chrome. Games play on a dark CRT screen.
+   =========================================================================== */
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&display=swap');
+
+:root {
+  --fc-cream: #f2efe6;
+  --fc-grid: rgba(28, 28, 28, 0.13);
+  --fc-paper: #faf8f2;
+  --fc-ink: #1c1c1c;
+  --fc-dim: #6f6b62;
+  --fc-screen: #15161f;
+  --fc-screen-l: #20222e;
+  --fc-yellow: #ffce3a;
+  --fc-teal: #2ec4b6;
+  --fc-coral: #ef5d52;
+  --fc-blue: #4d7cff;
+  --fc-pix: 'Press Start 2P', monospace;
+  --fc-sans: 'Space Grotesk', system-ui, sans-serif;
+  --fc-serif: 'Instrument Serif', Georgia, serif;
+}
+
+.fc-root {
+  position: fixed; inset: 0; z-index: 200;
+  display: flex; align-items: center; justify-content: center; padding: 20px;
+  background-color: var(--fc-cream);
+  /* Pantom-style "+" texture grid */
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='28'%3E%3Cpath d='M14 9.5 V18.5 M9.5 14 H18.5' stroke='%231c1c1c' stroke-opacity='0.16' stroke-width='1.5'/%3E%3C/svg%3E");
+  background-size: 28px 28px;
+  font-family: var(--fc-sans); color: var(--fc-ink);
+}
+.fc-root *, .fc-smashbar { box-sizing: border-box; }
+
+/* ---- window ------------------------------------------------------------- */
+.fc-window {
+  width: min(940px, 100%); height: min(648px, 94vh);
+  display: flex; flex-direction: column;
+  background: var(--fc-paper); border: 2px solid var(--fc-ink);
+  box-shadow: 7px 7px 0 var(--fc-ink);
+}
+.fc-titlebar {
+  position: relative; height: 32px; flex-shrink: 0; display: flex; align-items: center; padding: 0 9px;
+  background: repeating-linear-gradient(0deg, var(--fc-ink) 0 1px, transparent 1px 3px);
+  border-bottom: 2px solid var(--fc-ink);
+}
+.fc-close { width: 15px; height: 15px; background: var(--fc-paper); border: 2px solid var(--fc-ink); display: flex; align-items: center; justify-content: center; }
+.fc-close i { width: 7px; height: 7px; border: 1px solid var(--fc-ink); display: block; }
+.fc-title {
+  position: absolute; left: 50%; transform: translateX(-50%);
+  background: var(--fc-paper); border: 2px solid var(--fc-ink); padding: 4px 14px;
+  font-family: var(--fc-pix); font-size: 9px; white-space: nowrap;
+}
+.fc-clock { margin-left: auto; background: var(--fc-paper); border: 2px solid var(--fc-ink); padding: 4px 9px; font-family: var(--fc-pix); font-size: 8px; }
+
+.fc-menubar {
+  display: flex; align-items: center; gap: 16px; padding: 9px 14px; flex-shrink: 0;
+  background: var(--fc-paper); border-bottom: 2px solid var(--fc-ink);
+  font-family: var(--fc-sans); font-size: 13.5px; font-weight: 600;
+}
+.fc-menu-exe, .fc-menu-edit { color: var(--fc-ink); }
+.fc-menu-run {
+  font-family: var(--fc-pix); font-size: 9px; cursor: pointer;
+  background: var(--fc-ink); color: var(--fc-paper); border: none; padding: 8px 11px;
+  box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.25);
+}
+.fc-menu-run:active { transform: translate(2px, 2px); box-shadow: none; }
+.fc-menu-spacer { flex: 1; }
+.fc-saved { font-family: var(--fc-sans); font-size: 12px; font-weight: 600; color: var(--fc-dim); }
+.fc-saved b { color: var(--fc-ink); background: var(--fc-yellow); padding: 2px 6px; border: 1.5px solid var(--fc-ink); margin-left: 4px; }
+
+.fc-body { flex: 1; position: relative; background: var(--fc-paper); overflow: hidden; }
+
+.fc-statusbar {
+  display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;
+  padding: 7px 14px; background: var(--fc-cream); border-top: 2px solid var(--fc-ink);
+  font-family: var(--fc-pix); font-size: 8px; color: var(--fc-dim);
+}
+
+/* ---- desktop (light) ---------------------------------------------------- */
+.fc-desktop { display: flex; height: 100%; }
+.fc-carts {
+  flex: 1; display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  grid-auto-rows: min-content; gap: 18px; padding: 26px; align-content: start;
+}
+.fc-cart {
+  display: flex; flex-direction: column; align-items: center; gap: 8px; cursor: pointer; position: relative;
+  background: #fff; color: var(--fc-ink); border: 2px solid var(--fc-ink);
+  box-shadow: 4px 4px 0 var(--fc-ink); padding: 16px 12px 13px;
+  transition: transform 0.1s, box-shadow 0.1s;
+}
+.fc-cart::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 7px; background: var(--cc); border-bottom: 2px solid var(--fc-ink); }
+.fc-cart:hover { transform: translate(-2px, -2px); box-shadow: 6px 6px 0 var(--fc-ink); }
+.fc-cart.sel { border-color: var(--cc); box-shadow: 5px 5px 0 var(--cc); }
+.fc-cart-art { height: 86px; margin-top: 8px; display: flex; align-items: center; justify-content: center; }
+.fc-cartpix { width: 100%; height: 100%; image-rendering: pixelated; display: block; }
+.fc-cart-name { font-family: var(--fc-serif); font-weight: 400; font-size: 24px; letter-spacing: 0; line-height: 1; }
+.fc-cart-tag { font-family: var(--fc-pix); font-size: 6.5px; color: #fff; background: var(--cc); padding: 4px 7px; border: 1.5px solid var(--fc-ink); }
+.fc-cart-hi { font-family: var(--fc-pix); font-size: 7px; color: var(--fc-dim); }
+
+.fc-sidebar {
+  width: 196px; flex-shrink: 0; padding: 22px 16px; display: flex; flex-direction: column; gap: 11px;
+  background: var(--fc-cream); border-left: 2px solid var(--fc-ink);
+}
+.fc-drive {
+  font-family: var(--fc-sans); font-weight: 600; font-size: 13.5px; color: var(--fc-ink);
+  background: #fff; border: 2px solid var(--fc-ink); padding: 10px 12px; box-shadow: 2px 2px 0 var(--fc-ink);
+}
+.fc-sidenote { margin-top: auto; border-top: 2px dashed var(--fc-ink); padding-top: 14px; }
+.fc-sel-name { font-family: var(--fc-serif); font-size: 26px; line-height: 1; color: var(--fc-ink); margin-bottom: 8px; }
+.fc-sel-blurb { font-family: var(--fc-sans); font-size: 14px; line-height: 1.4; color: var(--fc-dim); margin-bottom: 16px; }
+
+/* ---- buttons ------------------------------------------------------------ */
+.fc-btn {
+  font-family: var(--fc-pix); font-size: 9px; cursor: pointer;
+  background: #fff; color: var(--fc-ink); border: 2px solid var(--fc-ink);
+  padding: 10px 13px; box-shadow: 3px 3px 0 var(--fc-ink);
+}
+.fc-btn:hover { transform: translate(-1px, -1px); box-shadow: 4px 4px 0 var(--fc-ink); }
+.fc-btn:active { transform: translate(2px, 2px); box-shadow: none; }
+.fc-btn-gold { background: var(--fc-yellow); }
+.fc-insert, .fc-ct-lock { width: 100%; }
+
+/* ---- FigSmash stage select (dark screen) ------------------------------- */
+.fc-stagesel {
+  position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center;
+  gap: 11px; padding: 18px 20px; overflow: auto;
+  background: var(--fc-screen);
+  background-image: radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px); background-size: 16px 16px;
+}
+.fc-ss-title { font-family: var(--fc-pix); font-size: 11px; color: var(--fc-yellow); }
+.fc-ss-subtitle { margin-top: 2px; color: var(--fc-teal); }
+.fc-ss-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; width: min(640px, 100%); }
+.fc-ss-card {
+  display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: pointer; padding: 10px;
+  background: var(--fc-screen-l); color: #fff; border: 2px solid #000; box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.6);
+}
+.fc-ss-card:hover { transform: translate(-1px, -1px); }
+.fc-ss-card.sel { border-color: var(--cc); box-shadow: 3px 3px 0 var(--cc); }
+.fc-ss-prev { width: 100%; height: 46px; background: #0c0c14; border: 2px solid #000; display: block; position: relative; image-rendering: pixelated; overflow: hidden; }
+.fc-ss-bar { position: absolute; top: 0; left: 0; right: 0; height: 10px; }
+.fc-ss-blk { position: absolute; left: 8px; top: 18px; width: 22px; height: 22px; opacity: 0.85; }
+.fc-ss-row { position: absolute; left: 36px; top: 20px; right: 8px; height: 7px; background: #3a3c4e; }
+.fc-ss-row.short { top: 32px; right: 26px; background: #2c2e3e; }
+.fc-ss-name { font-family: var(--fc-pix); font-size: 8px; }
+.fc-ss-sub { font-family: var(--fc-pix); font-size: 6px; color: var(--cc); }
+.fc-ss-chars { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; width: min(640px, 100%); }
+.fc-ss-char {
+  display: flex; flex-direction: column; align-items: center; gap: 3px; cursor: pointer; padding: 9px 4px;
+  background: var(--fc-screen-l); color: #fff; border: 2px solid #000; box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.6);
+}
+.fc-ss-char:hover { transform: translate(-1px, -1px); }
+.fc-ss-char.sel { border-color: var(--cc); box-shadow: 2px 2px 0 var(--cc); }
+.fc-ss-charname { font-family: var(--fc-pix); font-size: 7px; color: var(--cc); }
+.fc-ss-charpow { font-family: var(--fc-pix); font-size: 5.5px; color: #8d8a9c; text-align: center; }
+.fc-ss-diff { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: center; }
+.fc-ss-difflabel { font-family: var(--fc-pix); font-size: 8px; color: #8d8a9c; }
+.fc-ss-diff button {
+  font-family: var(--fc-pix); font-size: 8px; cursor: pointer; padding: 7px 9px;
+  background: var(--fc-screen-l); color: #fff; border: 2px solid #000;
+}
+.fc-ss-diff button.on { background: var(--fc-yellow); color: var(--fc-ink); }
+.fc-ss-btns { display: flex; gap: 12px; margin-top: auto; }
+
+/* ---- boot / cartridge slide-in (dark screen) --------------------------- */
+.fc-boot {
+  position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 26px;
+  background: radial-gradient(120% 100% at 50% 0%, #20222e, #0a0a12);
+}
+.fc-slot { position: relative; width: 180px; height: 150px; }
+.fc-cartridge {
+  position: absolute; left: 50%; top: 0; transform: translateX(-50%);
+  width: 120px; height: 110px; background: var(--cc, #4d7cff);
+  border: 3px solid #000; box-shadow: 5px 5px 0 rgba(0, 0, 0, 0.5);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+  animation: fc-insert-cart 1.6s cubic-bezier(0.5, 0, 0.7, 1) forwards;
+}
+.fc-cartridge-label { display: flex; align-items: center; justify-content: center; }
+.fc-cartridge-name { font-family: var(--fc-pix); font-size: 9px; color: #000; }
+.fc-slotmouth { position: absolute; left: 50%; bottom: 6px; transform: translateX(-50%); width: 150px; height: 16px; background: #000; box-shadow: inset 0 4px 0 rgba(255, 255, 255, 0.08); }
+@keyframes fc-insert-cart {
+  0% { transform: translate(-50%, -150px); opacity: 0; }
+  35% { opacity: 1; }
+  70% { transform: translate(-50%, 44px); }
+  78% { transform: translate(-50%, 38px); }
+  100% { transform: translate(-50%, 44px); }
+}
+.fc-bootmsg { font-family: var(--fc-pix); font-size: 10px; color: var(--fc-yellow); }
+.fc-blink { animation: fc-blink 0.9s steps(1) infinite; }
+@keyframes fc-blink { 50% { opacity: 0; } }
+
+/* ---- results (light card) ---------------------------------------------- */
+.fc-results { position: fixed; inset: 0; z-index: 210; display: flex; align-items: center; justify-content: center; background: rgba(243, 231, 196, 0.66); }
+.fc-results-box { text-align: center; padding: 30px 34px; background: #fff; border: 2px solid var(--fc-ink); box-shadow: 8px 8px 0 var(--cc); }
+.fc-results-title { font-family: var(--fc-pix); font-size: 11px; color: var(--fc-ink); margin-bottom: 18px; }
+.fc-results-score { font-family: var(--fc-pix); font-size: 30px; color: var(--fc-ink); letter-spacing: 2px; }
+.fc-results-hi { font-family: var(--fc-pix); font-size: 9px; color: var(--cc); margin-top: 14px; animation: fc-blink 0.6s steps(1) infinite; }
+.fc-approved { font-family: var(--fc-pix); font-size: 15px; color: var(--cc); padding: 6px 0 4px; }
+.fc-results-btns { display: flex; gap: 10px; margin-top: 24px; justify-content: center; }
+
+/* ---- FigSmash boss banner (light) -------------------------------------- */
+.fc-smashbar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 205;
+  display: flex; align-items: center; gap: 8px; justify-content: center;
+  padding: 9px 12px; background: var(--fc-paper); color: var(--fc-ink);
+  font-family: var(--fc-pix); font-size: 9px; border-bottom: 2px solid var(--fc-ink);
+}
+.fc-smashbar b { color: var(--fc-coral); }
+.fc-smashbar button { font-family: var(--fc-pix); font-size: 8px; cursor: pointer; margin-left: 6px; background: var(--fc-ink); color: var(--fc-paper); border: none; padding: 6px 8px; }
+body.fc-smash .fig-side { display: none !important; }
+
+/* ===== FigHero (dark screen) ============================================ */
+.fc-fighero, .fc-contrast { position: absolute; inset: 0; display: flex; flex-direction: column; padding: 14px 16px; background: var(--fc-screen); }
+.fc-fh-hud { display: flex; justify-content: space-between; font-family: var(--fc-pix); font-size: 10px; color: #fff; }
+.fc-fh-hud b { color: var(--fc-yellow); }
+.fc-fh-combo { color: var(--fc-yellow); }
+.fc-fh-track {
+  position: relative; flex: 1; margin: 12px auto; width: min(340px, 100%);
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px;
+  background: #0b0c14; border: 2px solid #000; overflow: hidden;
+}
+.fc-fh-lane { position: relative; border-left: 1px solid rgba(255, 255, 255, 0.06); }
+.fc-fh-laneglow { position: absolute; inset: 0; background: var(--lc); opacity: 0; transition: opacity 0.08s; mix-blend-mode: screen; }
+.fc-fh-note {
+  position: absolute; left: 50%; transform: translate(-50%, -50%);
+  width: 78%; aspect-ratio: 1 / 1; max-height: 38px;
+  display: flex; align-items: center; justify-content: center;
+  border: 2px solid #000; box-shadow: 0 3px 0 rgba(0, 0, 0, 0.5);
+}
+.fc-fh-note.miss { opacity: 0.35; filter: grayscale(1); }
+.fc-fh-strike { position: absolute; left: 0; right: 0; height: 4px; background: var(--fc-yellow); box-shadow: 0 0 10px var(--fc-yellow); transform: translateY(-50%); }
+.fc-fh-key {
+  position: absolute; bottom: 6px; left: 50%; transform: translateX(-50%);
+  width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;
+  font-family: var(--fc-pix); font-size: 12px; color: var(--lc); border: 2px solid var(--lc); background: rgba(0, 0, 0, 0.4);
+}
+.fc-fh-judge { position: absolute; left: 50%; top: 60%; transform: translateX(-50%); font-family: var(--fc-pix); font-size: 16px; text-shadow: 2px 2px 0 #000; animation: fc-judge 0.4s ease-out forwards; pointer-events: none; }
+@keyframes fc-judge { 0% { transform: translate(-50%, 8px); opacity: 0; } 30% { opacity: 1; } 100% { transform: translate(-50%, -10px); opacity: 0; } }
+.fc-fh-count { position: absolute; left: 50%; top: 40%; transform: translate(-50%, -50%); font-family: var(--fc-pix); font-size: 48px; color: var(--fc-yellow); text-shadow: 3px 3px 0 #000; }
+.fc-fh-foot, .fc-ct-foot { text-align: center; font-family: var(--fc-sans); font-size: 13px; color: #9b988f; }
+.fc-fh-foot b { color: var(--fc-yellow); font-family: var(--fc-pix); font-size: 10px; }
+
+/* ===== FigContrast — colour memory (dark screen) ======================= */
+.fc-ct-main { flex: 1; display: flex; gap: 16px; align-items: stretch; justify-content: center; padding: 6px 0 4px; min-height: 0; }
+.fc-ct-sliders-v { display: flex; gap: 12px; }
+.fc-vs { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.fc-vs-track { position: relative; width: 26px; flex: 1; border: 2px solid #000; box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.5); cursor: pointer; touch-action: none; }
+.fc-vs-knob { position: absolute; left: 50%; width: 22px; height: 22px; border-radius: 50%; background: #fff; border: 2px solid #000; transform: translate(-50%, 50%); box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5); pointer-events: none; }
+.fc-vs-label { font-family: var(--fc-pix); font-size: 9px; color: #cfcdd6; }
+.fc-ct-big {
+  flex: 1; max-width: 360px; position: relative; border: 2px solid #000; box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.5);
+  display: flex; align-items: center; justify-content: center;
+}
+.fc-ct-ms { font-family: var(--fc-pix); font-size: 26px; color: #fff; text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.5); }
+.fc-ct-ms small { font-size: 11px; opacity: 0.8; margin-left: 3px; }
+.fc-ct-roundscore { font-family: var(--fc-pix); font-size: 34px; text-shadow: 2px 2px 0 #000; }
+.fc-ct-roundscore small { font-size: 12px; }
+
+.fc-ct-bottom { display: flex; align-items: center; justify-content: space-between; padding: 6px 4px; }
+.fc-ct-instr { font-family: var(--fc-pix); font-size: 9px; color: #9b988f; }
+.fc-ct-submit {
+  width: 48px; height: 48px; border-radius: 50%; cursor: pointer; font-size: 22px; line-height: 1;
+  background: var(--fc-yellow); color: var(--fc-ink); border: 3px solid #000; box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.5);
+}
+.fc-ct-submit:hover:not(:disabled) { transform: translate(-1px, -1px); }
+.fc-ct-submit:disabled { opacity: 0.4; cursor: default; }
+
+.fc-ct-done { align-items: center; justify-content: center; gap: 18px; }
+.fc-ct-donetitle { font-family: var(--fc-pix); font-size: 13px; color: var(--fc-yellow); }
+.fc-ct-dotrow { display: flex; gap: 10px; }
+.fc-ct-dot { font-family: var(--fc-pix); font-size: 12px; }
+.fc-ct-total { font-family: var(--fc-pix); font-size: 44px; }
+.fc-ct-total small { font-size: 14px; color: #9b988f; }
+.fc-ct-best { font-family: var(--fc-pix); font-size: 10px; color: var(--fc-teal); animation: fc-blink 0.6s steps(1) infinite; }
+
+/* ===== FigAlign — drag-to-rebuild the box ============================== */
+.fc-align-stage { flex: 1; display: flex; align-items: center; justify-content: center; min-height: 0; padding: 6px 0; }
+.fc-align-canvas {
+  position: relative; aspect-ratio: 1; height: 100%; max-height: 340px;
+  background: #0e0f18; border: 2px solid #000; box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.5);
+  touch-action: none;
+}
+.fc-align-canvas svg { width: 100%; height: 100%; display: block; }
+.fc-align-ms, .fc-align-score { position: absolute; left: 0; right: 0; top: 10px; bottom: auto; text-align: center; pointer-events: none; }
