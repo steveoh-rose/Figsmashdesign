@@ -21,17 +21,6 @@ function isFrameLike(node) {
   return t === 'FRAME' || t === 'COMPONENT' || t === 'COMPONENT_SET' || t === 'SECTION';
 }
 
-function relTime(ms) {
-  if (!ms) return '';
-  var diff = Date.now() - ms;
-  var min = Math.round(diff / 60000);
-  if (min < 1) return 'just now';
-  if (min < 60) return min + 'm ago';
-  var hr = Math.round(min / 60);
-  if (hr < 24) return hr + 'h ago';
-  return Math.round(hr / 24) + 'd ago';
-}
-
 // Walk every page, collect the top-level frames/components, export a thumbnail
 // for each, and stream the set back to the UI.
 async function sendTeamFiles() {
@@ -55,7 +44,7 @@ async function sendTeamFiles() {
             name: node.name,
             team: page.name,
             thumbnail: 'data:image/png;base64,' + figma.base64Encode(bytes),
-            lastModified: relTime(figma.root.getPluginData ? 0 : 0) || 'now',
+            lastModified: 'now',
           });
         } catch (e) { /* skip nodes that refuse to export */ }
       }
@@ -69,13 +58,34 @@ async function sendTeamFiles() {
   }
 }
 
+// ── Connection config (Figma REST token + team id) ───────────────────────────
+// Persisted in clientStorage so the user pastes their token only once. The
+// actual REST calls happen in the UI iframe (the sandbox has no fetch); the
+// sandbox just stores and relays the config.
+var CONFIG_KEY = 'clubfigma.config.v1';
+
+async function sendConfig() {
+  var config = null;
+  try { config = await figma.clientStorage.getAsync(CONFIG_KEY); } catch (e) {}
+  figma.ui.postMessage({ type: 'CONFIG', config: config || null });
+}
+async function setConfig(config) {
+  try { await figma.clientStorage.setAsync(CONFIG_KEY, config || null); } catch (e) {}
+  figma.ui.postMessage({ type: 'CONFIG', config: config || null });
+  if (config) figma.notify('Club Figma: connected to your Figma org.');
+}
+
 figma.ui.onmessage = function (msg) {
   if (!msg) return;
-  if (msg.type === 'GET_TEAM_FILES') sendTeamFiles();
+  if (msg.type === 'GET_TEAM_FILES') sendTeamFiles();        // current-file fallback
+  if (msg.type === 'GET_CONFIG') sendConfig();
+  if (msg.type === 'SET_CONFIG') setConfig(msg.config);
   if (msg.type === 'close') figma.closePlugin();
 };
 
-// Push an initial batch so the Expo Hall has data the moment the user walks in.
+// On launch: hand over any stored connection, and push the current file's frames
+// as an immediate fallback so the Expo Hall is never empty.
+sendConfig();
 sendTeamFiles();
 // Refresh whenever the canvas changes (new frames, edits, renames).
 figma.on('documentchange', function () { /* debounced below */ scheduleRefresh(); });

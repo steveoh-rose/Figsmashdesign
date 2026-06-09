@@ -5,14 +5,32 @@ thumbnails of the frames in your current document.
 
 ## How it works
 
-- `code.js` — the plugin sandbox (main thread). Scans every page for top-level
-  frames/components, exports each as a small PNG, and streams them to the UI as
-  `{ type: 'TEAM_FILES', files: [...] }`. Re-runs on document changes.
-- `ui.html` — the Club Figma web app, built into a single self-contained file.
-  The Expo Hall asks for files with `{ type: 'GET_TEAM_FILES' }` and renders the
-  thumbnails it gets back. (This file is generated — see Building.)
-- `manifest.json` — wires `code.js` + `ui.html` together and allows the Google
-  Fonts domains used by the pixel UI.
+The Expo Hall has two data sources:
+
+1. **Current file** (always on) — `code.js` (the plugin sandbox) scans every page
+   for top-level frames/components, exports each as a small PNG, and streams them
+   to the UI as `{ type: 'TEAM_FILES', files: [...] }`. Re-runs on document changes.
+2. **Recent org files** (after you connect) — the UI calls the Figma REST API to
+   list the most recently edited files across your team's projects, so you can
+   see what everyone's working on. This needs a personal access token + team ID.
+
+Files involved:
+- `code.js` — sandbox: current-file scan + stores your connection in
+  `clientStorage` (the sandbox can't `fetch`, so the REST calls run in the UI).
+- `ui.html` — the Club Figma web app, built into a single self-contained file
+  (generated — see Building).
+- `manifest.json` — wires `code.js` + `ui.html`, and allows the Google Fonts +
+  `api.figma.com` + Figma thumbnail domains.
+
+## Connecting your org (recent files)
+
+1. Run the plugin, click **🔌 CONNECT** (top-right).
+2. Paste a **personal access token** — Figma → Settings → Security → Personal
+   access tokens, scope **file_read**.
+3. Set your **Team ID** — the number in your team URL
+   `figma.com/files/team/<ID>/…` (a default is pre-filled).
+4. **Connect.** The Expo Hall now shows your team's most-recently-edited files.
+   The token is stored only in Figma's local plugin storage and never leaves it.
 
 ## Building
 

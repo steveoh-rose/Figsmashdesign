@@ -62,6 +62,58 @@ interface FigmaFile {
   lastModified?: string;
 }
 
+interface FigmaConfig {
+  token: string;
+  teamId: string;
+}
+
+// Default team id for this workspace (overridable in the Connect panel).
+const DEFAULT_TEAM_ID = '976058076181350431';
+
+function relTime(iso?: string): string {
+  if (!iso) return '';
+  const diff = Date.now() - new Date(iso).getTime();
+  const m = Math.round(diff / 60000);
+  if (m < 1) return 'just now';
+  if (m < 60) return m + 'm ago';
+  const h = Math.round(m / 60);
+  if (h < 24) return h + 'h ago';
+  return Math.round(h / 24) + 'd ago';
+}
+
+// Pull recent files across a team's projects via the Figma REST API. Only works
+// inside the plugin (the manifest allows api.figma.com); sorted newest-first.
+async function fetchOrgFiles(cfg: FigmaConfig, limit = 12): Promise<FigmaFile[]> {
+  const headers = { 'X-Figma-Token': cfg.token };
+  const projRes = await fetch(`https://api.figma.com/v1/teams/${cfg.teamId}/projects`, { headers });
+  if (!projRes.ok) throw new Error(`projects ${projRes.status}`);
+  const projData = await projRes.json();
+  const projects: Array<{ id: string; name: string }> = projData.projects || [];
+
+  const all: FigmaFile[] = [];
+  // Cap project fan-out so a huge org doesn't hammer the API.
+  for (const proj of projects.slice(0, 8)) {
+    try {
+      const fRes = await fetch(`https://api.figma.com/v1/projects/${proj.id}/files`, { headers });
+      if (!fRes.ok) continue;
+      const fData = await fRes.json();
+      for (const f of (fData.files || [])) {
+        all.push({
+          key: f.key,
+          name: f.name,
+          team: proj.name,
+          thumbnail: f.thumbnail_url,
+          lastModified: relTime(f.last_modified),
+          // keep raw timestamp for sorting
+          ...(f.last_modified ? { _ts: new Date(f.last_modified).getTime() } : {}),
+        } as FigmaFile & { _ts?: number });
+      }
+    } catch { /* skip project */ }
+  }
+  all.sort((a, b) => ((b as any)._ts || 0) - ((a as any)._ts || 0));
+  return all.slice(0, limit);
+}
+
 // ── Palette ──────────────────────────────────────────────────────────────────
 
 // Floating-island palette ported from rip-designs-catharsis-garden:
@@ -738,6 +790,60 @@ const MOCK_FILES: FigmaFile[] = [
   { key: '6', name: 'Onboarding V3', team: 'Core UX', lastModified: '30m ago' },
 ];
 
+// ── Connect-your-org panel ────────────────────────────────────────────────────
+
+function ConnectPanel({ config, status, onSave, onClose }: {
+  config: FigmaConfig | null;
+  status: 'idle' | 'loading' | 'error';
+  onSave: (token: string, teamId: string) => void;
+  onClose: () => void;
+}) {
+  const [token, setToken] = useState(config?.token || '');
+  const [teamId, setTeamId] = useState(config?.teamId || DEFAULT_TEAM_ID);
+  return (
+    <div className="cfw-connect-modal" onClick={onClose}>
+      <div className="cfw-connect-inner" onClick={e => e.stopPropagation()}>
+        <div className="cfw-connect-head">
+          <span>CONNECT YOUR FIGMA</span>
+          <button onClick={onClose}>✕</button>
+        </div>
+        <p className="cfw-connect-desc">
+          Pull the most recently edited files from across your team into the Expo
+          Hall — so you can see what everyone's working on. Runs only inside the
+          Figma plugin; your token is stored locally in Figma and never leaves it.
+        </p>
+        <label className="cfw-connect-label">Personal access token</label>
+        <input
+          className="cfw-connect-input" type="password" value={token} placeholder="figd_…"
+          onChange={e => setToken(e.target.value)} autoFocus
+        />
+        <a className="cfw-connect-hint" href="https://www.figma.com/developers/api#access-tokens" target="_blank" rel="noreferrer">
+          ↗ create a token (Settings → Security → Personal access tokens, scope: file_read)
+        </a>
+        <label className="cfw-connect-label">Team ID</label>
+        <input
+          className="cfw-connect-input" type="text" value={teamId} placeholder="team id from your team URL"
+          onChange={e => setTeamId(e.target.value)}
+        />
+        <span className="cfw-connect-hint">
+          figma.com/files/team/<b>&lt;ID&gt;</b>/… — copy the number from your team URL.
+        </span>
+        {status === 'error' && (
+          <div className="cfw-connect-error">Couldn't reach Figma with those details. Check the token scope &amp; team ID.</div>
+        )}
+        <div className="cfw-connect-actions">
+          {config && <button className="cfw-connect-clear" onClick={() => onSave('', '')}>Disconnect</button>}
+          <span style={{ flex: 1 }} />
+          <button className="cfw-connect-cancel" onClick={onClose}>Cancel</button>
+          <button className="cfw-connect-save" onClick={() => onSave(token, teamId)}>
+            {status === 'loading' ? 'Connecting…' : 'Connect'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 
 export function ClubFigmaWorld() {
@@ -756,7 +862,42 @@ export function ClubFigmaWorld() {
   const [activeGame, setActiveGame] = useState<GameId | null>(null);
   const [expandedFrame, setExpandedFrame] = useState<number | null>(null);
   const [figmaFiles, setFigmaFiles] = useState<FigmaFile[]>(MOCK_FILES);
+  const [figmaConfig, setFigmaConfig] = useState<FigmaConfig | null>(null);
+  const [showConnect, setShowConnect] = useState(false);
+  const [expoStatus, setExpoStatus] = useState<'idle' | 'loading' | 'error'>('idle');
   const { state: consoleState, submitScore, addTimeSaved } = useConsole();
+
+  const figmaConfigRef = useRef(figmaConfig);
+  figmaConfigRef.current = figmaConfig;
+
+  // Set files + preload their thumbnails into the canvas image cache.
+  const loadFiles = useCallback((files: FigmaFile[]) => {
+    if (!files?.length) return;
+    setFigmaFiles(files);
+    loadedImagesRef.current.clear();
+    files.forEach((f, i) => {
+      if (!f.thumbnail) return;
+      const img = new Image();
+      img.onload = () => { loadedImagesRef.current.set(`frame-${i}`, img); };
+      img.src = f.thumbnail; // cross-origin ok: we only drawImage, never read back
+    });
+  }, []);
+
+  // Refresh the Expo Hall: org-wide recent files if connected, else current file.
+  const refreshExpo = useCallback(async () => {
+    const cfg = figmaConfigRef.current;
+    if (cfg?.token && cfg?.teamId) {
+      setExpoStatus('loading');
+      try {
+        const files = await fetchOrgFiles(cfg);
+        if (files.length) { loadFiles(files); setExpoStatus('idle'); }
+        else setExpoStatus('error');
+      } catch { setExpoStatus('error'); }
+      return;
+    }
+    // No connection — ask the plugin sandbox for the current file's frames.
+    try { window.parent.postMessage({ pluginMessage: { type: 'GET_TEAM_FILES' } }, '*'); } catch { /* not in plugin */ }
+  }, [loadFiles]);
 
   const roomRef = useRef(room);
   roomRef.current = room;
@@ -799,29 +940,37 @@ export function ClubFigmaWorld() {
     }));
   }, [room, W, H]);
 
-  // Try Figma plugin bridge for real files + load thumbnails into canvas images
+  // Plugin bridge: receive stored connection config + current-file frames.
   useEffect(() => {
-    if (room !== 'expo') return;
-    try {
-      window.parent.postMessage({ pluginMessage: { type: 'GET_TEAM_FILES' } }, '*');
-    } catch { /* not in plugin context */ }
     const onMsg = (e: MessageEvent) => {
       const payload = e.data?.pluginMessage;
-      if (payload?.type !== 'TEAM_FILES') return;
-      const files: FigmaFile[] = payload.files;
-      if (!files?.length) return;
-      setFigmaFiles(files);
-      // Pre-load thumbnails so the canvas can drawImage() them
-      files.forEach((f, i) => {
-        if (!f.thumbnail) return;
-        const img = new Image();
-        img.onload = () => { loadedImagesRef.current.set(`frame-${i}`, img); };
-        img.src = f.thumbnail;
-      });
+      if (!payload) return;
+      if (payload.type === 'CONFIG') {
+        setFigmaConfig(payload.config && payload.config.token ? payload.config : null);
+      }
+      if (payload.type === 'TEAM_FILES') {
+        // Only use the current-file fallback when not connected to the org.
+        if (!figmaConfigRef.current?.token) loadFiles(payload.files);
+      }
     };
     window.addEventListener('message', onMsg);
+    try { window.parent.postMessage({ pluginMessage: { type: 'GET_CONFIG' } }, '*'); } catch { /* not in plugin */ }
     return () => window.removeEventListener('message', onMsg);
-  }, [room]);
+  }, [loadFiles]);
+
+  // Refresh the gallery when entering the Expo Hall or when the connection changes.
+  useEffect(() => {
+    if (room !== 'expo') return;
+    refreshExpo();
+  }, [room, figmaConfig, refreshExpo]);
+
+  // Persist a connection (token + team id) via the plugin sandbox.
+  const saveConfig = useCallback((token: string, teamId: string) => {
+    const cfg = token.trim() ? { token: token.trim(), teamId: teamId.trim() || DEFAULT_TEAM_ID } : null;
+    setFigmaConfig(cfg);
+    try { window.parent.postMessage({ pluginMessage: { type: 'SET_CONFIG', config: cfg } }, '*'); } catch { /* not in plugin */ }
+    setShowConnect(false);
+  }, []);
 
   // Mouse tracking — update cursor position via direct DOM mutation (no re-render)
   const onMouseMove = useCallback((e: React.MouseEvent) => {
@@ -986,7 +1135,24 @@ export function ClubFigmaWorld() {
             <span>{r.toUpperCase()}</span>
           </button>
         ))}
+        <button
+          className={`cfw-mm-btn cfw-mm-connect${figmaConfig ? ' connected' : ''}`}
+          title={figmaConfig ? 'Connected — manage Figma org sync' : 'Connect your Figma org'}
+          onClick={(e) => { e.stopPropagation(); setShowConnect(true); }}
+        >
+          {figmaConfig ? '🟢' : '🔌'}<span>{figmaConfig ? 'SYNCED' : 'CONNECT'}</span>
+        </button>
       </div>
+
+      {/* Connect-your-org panel */}
+      {showConnect && (
+        <ConnectPanel
+          config={figmaConfig}
+          status={expoStatus}
+          onSave={saveConfig}
+          onClose={() => setShowConnect(false)}
+        />
+      )}
 
       {/* Presence bar */}
       <div className="cfw-presence">
