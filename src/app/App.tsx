@@ -13,6 +13,7 @@ import { MapSelect } from './components/screens/MapSelect';
 import { ImportDialog } from './components/screens/ImportDialog';
 import { WinScreen } from './components/screens/WinScreen';
 import { PauseMenu } from './components/screens/PauseMenu';
+import { DesignSystemRoom } from './components/screens/DesignSystemRoom';
 
 export default function App() {
   useEffect(() => {
@@ -32,6 +33,7 @@ export default function App() {
       <ImportDialog />
       <WinScreen />
       <PauseMenu />
+      <DesignSystemRoom />
       <FigmaChrome />
       <CharacterArtMounts />
     </>
