@@ -20,6 +20,7 @@ import { WinScreen } from '../app/components/screens/WinScreen';
 import { PauseMenu } from '../app/components/screens/PauseMenu';
 import { ForceQuitDialog } from '../app/components/ForceQuitDialog';
 import { Toolbar } from '../app/components/Toolbar';
+import { InspectorPanel } from '../app/components/InspectorPanel';
 import { ImportDialog } from '../app/components/screens/ImportDialog';
 import { mountEngine } from '../app/game/engine';
 import '../styles/figsmash.css';
@@ -1034,6 +1035,7 @@ export function ClubFigmaWorld() {
           </div>
           <HudHeader />
           <GameCanvas />
+          <InspectorPanel />
           <CharacterSelect />
           <MapSelect />
           <WinScreen />
