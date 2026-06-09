@@ -1029,9 +1029,12 @@ export function ClubFigmaWorld() {
       tx: 120 + Math.random() * (worldW - 240), ty: 140 + Math.random() * (worldH - 280),
       trail: [], idleTimer: 0,
     }));
-    avatarRef.current = { x: worldW / 2, y: worldH / 2, vx: 0, vy: 0 };
-    camRef.current = { x: clamp(worldW / 2 - W / ZOOM / 2, 0, Math.max(0, worldW - W / ZOOM)),
-                       y: clamp(worldH / 2 - H / ZOOM / 2, 0, Math.max(0, worldH - H / ZOOM)) };
+    // Start facing the room's focal point — the Expo gallery sits up top.
+    const startX = worldW / 2;
+    const startY = room === 'expo' ? worldH * 0.3 : worldH / 2;
+    avatarRef.current = { x: startX, y: startY, vx: 0, vy: 0 };
+    camRef.current = { x: clamp(startX - W / ZOOM / 2, 0, Math.max(0, worldW - W / ZOOM)),
+                       y: clamp(startY - H / ZOOM / 2, 0, Math.max(0, worldH - H / ZOOM)) };
     trailRef.current = [];
   }, [room, worldW, worldH, W, H]);
 
@@ -1053,11 +1056,11 @@ export function ClubFigmaWorld() {
     return () => window.removeEventListener('message', onMsg);
   }, [loadFiles]);
 
-  // Refresh the gallery when entering the Expo Hall or when the connection changes.
+  // Preload the Expo Hall gallery up front (on mount, and whenever the
+  // connection changes) so the frames are already loaded before you walk in.
   useEffect(() => {
-    if (room !== 'expo') return;
     refreshExpo();
-  }, [room, figmaConfig, refreshExpo]);
+  }, [figmaConfig, refreshExpo]);
 
   // Persist a connection (token + team id) via the plugin sandbox.
   const saveConfig = useCallback((token: string, teamId: string) => {
