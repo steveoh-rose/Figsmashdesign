@@ -39,12 +39,17 @@ async function sendTeamFiles() {
         if (!bb || bb.width < 4 || bb.height < 4) continue;
         try {
           var bytes = await node.exportAsync({ format: 'PNG', constraint: { type: 'WIDTH', value: THUMB_WIDTH } });
+          // Deep link straight to this frame when the file is saved (has a key).
+          var url = figma.fileKey
+            ? 'https://www.figma.com/file/' + figma.fileKey + '?node-id=' + encodeURIComponent(node.id)
+            : undefined;
           files.push({
             key: node.id,
             name: node.name,
             team: page.name,
             thumbnail: 'data:image/png;base64,' + figma.base64Encode(bytes),
             lastModified: 'now',
+            url: url,
           });
         } catch (e) { /* skip nodes that refuse to export */ }
       }
@@ -80,6 +85,9 @@ figma.ui.onmessage = function (msg) {
   if (msg.type === 'GET_TEAM_FILES') sendTeamFiles();        // current-file fallback
   if (msg.type === 'GET_CONFIG') sendConfig();
   if (msg.type === 'SET_CONFIG') setConfig(msg.config);
+  if (msg.type === 'OPEN_URL' && msg.url) {
+    try { figma.openExternal(msg.url); } catch (e) { figma.notify('Could not open: ' + ((e && e.message) || e)); }
+  }
   if (msg.type === 'close') figma.closePlugin();
 };
 

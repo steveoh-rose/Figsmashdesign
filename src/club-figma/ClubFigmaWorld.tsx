@@ -60,6 +60,7 @@ interface FigmaFile {
   team: string;
   thumbnail?: string;
   lastModified?: string;
+  url?: string;     // deep link to open in Figma
 }
 
 interface FigmaConfig {
@@ -104,6 +105,7 @@ async function fetchOrgFiles(cfg: FigmaConfig, limit = 12): Promise<FigmaFile[]>
           team: proj.name,
           thumbnail: f.thumbnail_url,
           lastModified: relTime(f.last_modified),
+          url: `https://www.figma.com/file/${f.key}`,
           // keep raw timestamp for sorting
           ...(f.last_modified ? { _ts: new Date(f.last_modified).getTime() } : {}),
         } as FigmaFile & { _ts?: number });
@@ -112,6 +114,33 @@ async function fetchOrgFiles(cfg: FigmaConfig, limit = 12): Promise<FigmaFile[]>
   }
   all.sort((a, b) => ((b as any)._ts || 0) - ((a as any)._ts || 0));
   return all.slice(0, limit);
+}
+
+// Render a crisp, full-res screenshot of a file's first frame for the expanded
+// modal (the list thumbnail is fine for the wall, but small up close). Best
+// effort: returns a PNG URL, or null on any hiccup (caller falls back to the
+// thumbnail).
+async function fetchFileScreenshot(cfg: FigmaConfig, key: string): Promise<string | null> {
+  try {
+    const headers = { 'X-Figma-Token': cfg.token };
+    const meta = await fetch(`https://api.figma.com/v1/files/${key}?depth=2`, { headers });
+    if (!meta.ok) return null;
+    const doc = await meta.json();
+    const pages = doc.document?.children || [];
+    let nodeId: string | null = null;
+    for (const pg of pages) {
+      const frame = (pg.children || []).find((c: any) => c.type === 'FRAME' || c.type === 'COMPONENT' || c.type === 'SECTION');
+      if (frame) { nodeId = frame.id; break; }
+    }
+    if (!nodeId) nodeId = pages[0]?.id || null;
+    if (!nodeId) return null;
+    const img = await fetch(`https://api.figma.com/v1/images/${key}?ids=${encodeURIComponent(nodeId)}&format=png&scale=2`, { headers });
+    if (!img.ok) return null;
+    const data = await img.json();
+    return data.images?.[nodeId] || null;
+  } catch {
+    return null;
+  }
 }
 
 // ── Palette ──────────────────────────────────────────────────────────────────
@@ -972,6 +1001,27 @@ export function ClubFigmaWorld() {
     setShowConnect(false);
   }, []);
 
+  // Open a file in Figma — via the sandbox (figma.openExternal) inside the
+  // plugin, or a plain new tab otherwise.
+  const openInFigma = useCallback((url?: string) => {
+    if (!url) return;
+    try { window.parent.postMessage({ pluginMessage: { type: 'OPEN_URL', url } }, '*'); } catch { /* not in plugin */ }
+    try { window.open(url, '_blank', 'noopener'); } catch { /* sandbox-only */ }
+  }, []);
+
+  // Lazy hi-res screenshot for the expanded modal (connected org files only).
+  const [modalShot, setModalShot] = useState<string | null>(null);
+  useEffect(() => {
+    setModalShot(null);
+    if (expandedFrame === null) return;
+    const file = figmaFiles[expandedFrame];
+    const cfg = figmaConfigRef.current;
+    if (!file?.key || !cfg?.token || !file.url) return; // only real org files
+    let cancelled = false;
+    fetchFileScreenshot(cfg, file.key).then(url => { if (!cancelled) setModalShot(url); });
+    return () => { cancelled = true; };
+  }, [expandedFrame, figmaFiles]);
+
   // Mouse tracking — update cursor position via direct DOM mutation (no re-render)
   const onMouseMove = useCallback((e: React.MouseEvent) => {
     if (activeGameRef.current) return;
@@ -1172,27 +1222,36 @@ export function ClubFigmaWorld() {
               <button onClick={() => setExpandedFrame(null)}>✕</button>
             </div>
             <div className="cfw-frame-preview">
-              <canvas className="cfw-frame-canvas" id={`frame-canvas-${expandedFrame}`}
-                ref={el => {
-                  if (!el) return;
-                  const ctx = el.getContext('2d')!;
-                  el.width = 600; el.height = 420;
-                  const img = loadedImagesRef.current.get(`frame-${expandedFrame}`);
-                  if (img) {
-                    // letterbox the real thumbnail into the preview
-                    ctx.fillStyle = '#08041a'; ctx.fillRect(0, 0, 600, 420);
-                    const scale = Math.min(600 / img.width, 420 / img.height);
-                    const dw = img.width * scale, dh = img.height * scale;
-                    ctx.drawImage(img, (600 - dw) / 2, (420 - dh) / 2, dw, dh);
-                  } else {
-                    drawPlaceholderFrame(ctx, 0, 0, 600, 420, expandedFrame);
-                  }
-                }} />
+              {modalShot ? (
+                // crisp full-res render fetched from the Figma images API
+                <img className="cfw-frame-img" src={modalShot} alt={figmaFiles[expandedFrame]?.name || 'design'} />
+              ) : (
+                <canvas className="cfw-frame-canvas" id={`frame-canvas-${expandedFrame}`}
+                  ref={el => {
+                    if (!el) return;
+                    const ctx = el.getContext('2d')!;
+                    el.width = 600; el.height = 420;
+                    const img = loadedImagesRef.current.get(`frame-${expandedFrame}`);
+                    if (img) {
+                      // letterbox the list thumbnail while the hi-res render loads
+                      ctx.fillStyle = '#1e404a'; ctx.fillRect(0, 0, 600, 420);
+                      const scale = Math.min(600 / img.width, 420 / img.height);
+                      const dw = img.width * scale, dh = img.height * scale;
+                      ctx.drawImage(img, (600 - dw) / 2, (420 - dh) / 2, dw, dh);
+                    } else {
+                      drawPlaceholderFrame(ctx, 0, 0, 600, 420, expandedFrame);
+                    }
+                  }} />
+              )}
               <div className="cfw-frame-mcp-badge">live from Figma ✦</div>
             </div>
             <div className="cfw-frame-footer">
               <span>Last modified: {figmaFiles[expandedFrame]?.lastModified || 'unknown'}</span>
-              <button className="cfw-frame-open">↗ Open in Figma</button>
+              <button
+                className="cfw-frame-open"
+                disabled={!figmaFiles[expandedFrame]?.url}
+                onClick={() => openInFigma(figmaFiles[expandedFrame]?.url)}
+              >↗ Open in Figma</button>
             </div>
           </div>
         </div>
