@@ -79,6 +79,7 @@ const WORLD_SCALE = 1.6;   // world is this much bigger than the screen
 const ZOOM = 1.4;          // how far the camera zooms in on the cursor
 const SPRING_K = 150;      // cursor follow stiffness (FigSmash-style spring)
 const SPRING_DAMP = 19;    // cursor follow damping
+const CAM_SPEED = 5.5;     // camera glide speed (lower = floatier pan)
 const clamp = (v: number, lo: number, hi: number) => (v < lo ? lo : v > hi ? hi : v);
 
 function relTime(iso?: string): string {
@@ -1169,14 +1170,20 @@ export function ClubFigmaWorld() {
       a.x = clamp(a.x, 8, worldW - 8);
       a.y = clamp(a.y, 8, worldH - 8);
 
-      // Camera edge-scroll: keep the avatar inside a margin, then clamp to world.
+      // Camera edge-scroll with easing: find where the camera *wants* to be to
+      // keep the avatar inside a margin, then glide toward it so panning drifts
+      // instead of tracking 1:1.
       const margin = Math.min(viewW, viewH) * 0.3;
-      if (a.x - cam.x < margin) cam.x = a.x - margin;
-      else if (a.x - cam.x > viewW - margin) cam.x = a.x - (viewW - margin);
-      if (a.y - cam.y < margin) cam.y = a.y - margin;
-      else if (a.y - cam.y > viewH - margin) cam.y = a.y - (viewH - margin);
-      cam.x = clamp(cam.x, 0, Math.max(0, worldW - viewW));
-      cam.y = clamp(cam.y, 0, Math.max(0, worldH - viewH));
+      let camTX = cam.x, camTY = cam.y;
+      if (a.x - camTX < margin) camTX = a.x - margin;
+      else if (a.x - camTX > viewW - margin) camTX = a.x - (viewW - margin);
+      if (a.y - camTY < margin) camTY = a.y - margin;
+      else if (a.y - camTY > viewH - margin) camTY = a.y - (viewH - margin);
+      camTX = clamp(camTX, 0, Math.max(0, worldW - viewW));
+      camTY = clamp(camTY, 0, Math.max(0, worldH - viewH));
+      const camEase = 1 - Math.exp(-dt * CAM_SPEED); // frame-rate independent
+      cam.x += (camTX - cam.x) * camEase;
+      cam.y += (camTY - cam.y) * camEase;
 
       // Detect hovered zone (avatar vs world-space zone rects)
       let newHover: string | null = null;
