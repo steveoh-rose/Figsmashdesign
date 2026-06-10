@@ -274,7 +274,7 @@ body.fc-smash .fig-side { display: none !important; }
 .fc-sh-tile.bad { background: #401414; border-color: #ff4d4d; box-shadow: 0 0 18px #ff4d4d; animation: fc-sh-shake 0.3s; }
 @keyframes fc-sh-shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
 .fc-sh-key { font-family: var(--fc-pix); font-size: 11px; color: var(--tc); }
-.fc-sh-tile.mod .fc-sh-key { font-size: 9px; }
+.fc-sh-tile.mod .fc-sh-key { font-family: var(--fc-sans); font-weight: 700; font-size: 16px; letter-spacing: 0.04em; }
 .fc-sh-name { font-family: var(--fc-sans); font-size: 10px; color: #8a8a93; text-transform: uppercase; letter-spacing: 0.05em; }
 
 .fc-sh-progress { display: flex; flex-direction: column; align-items: center; gap: 6px; }
