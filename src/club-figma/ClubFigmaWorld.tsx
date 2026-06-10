@@ -49,6 +49,7 @@ interface Zone {
 interface TransitState {
   progress: number;
   targetRoom: RoomId;
+  onComplete?: () => void;
   p0x: number; p0y: number;
   p1x: number; p1y: number;
   p2x: number; p2y: number;
@@ -1249,17 +1250,27 @@ function buildGardenZones(W: number, H: number, goTo: (r: RoomId) => void): Zone
   ];
 }
 
-function buildPipelineZones(W: number, H: number, goTo: (r: RoomId) => void, startTransit: (wireIdx: number) => void): Zone[] {
+function buildPipelineZones(W: number, H: number, goTo: (r: RoomId) => void, startTransit: (wireIdx: number, onComplete?: () => void) => void, openFile: () => void): Zone[] {
   const zw = 60, zh = 60;
   return [
-    { id: 'wire-0', label: 'SLIDE', hint: 'Ride the Hover State wire → The Office', x: 10, y: H * 0.25 - zh / 2, w: zw, h: zh, type: 'wire', action: () => startTransit(0) },
-    { id: 'wire-1', label: 'SLIDE', hint: 'Ride the On Click wire → The Office',    x: 10, y: H * 0.50 - zh / 2, w: zw, h: zh, type: 'wire', action: () => startTransit(1) },
-    { id: 'wire-2', label: 'SLIDE', hint: 'Ride the After Delay wire → The Office', x: 10, y: H * 0.72 - zh / 2, w: zw, h: zh, type: 'wire', action: () => startTransit(2) },
+    { id: 'wire-0', label: 'SLIDE', hint: 'Ride the Hover State wire → open a Figma file', x: 10, y: H * 0.25 - zh / 2, w: zw, h: zh, type: 'wire', action: () => startTransit(0, openFile) },
+    { id: 'wire-1', label: 'SLIDE', hint: 'Ride the On Click wire → open a Figma file',    x: 10, y: H * 0.50 - zh / 2, w: zw, h: zh, type: 'wire', action: () => startTransit(1, openFile) },
+    { id: 'wire-2', label: 'SLIDE', hint: 'Ride the After Delay wire → open a Figma file', x: 10, y: H * 0.72 - zh / 2, w: zw, h: zh, type: 'wire', action: () => startTransit(2, openFile) },
     { id: 'back-to-camp-pipeline', label: '▼ CAMP', hint: 'Return to Cursor Camp', x: W / 2 - 40, y: H - 58, w: 80, h: 40, type: 'door', action: () => goTo('camp') },
   ];
 }
 
 // ── Mock Figma files (shown while MCP loads) ──────────────────────────────────
+
+// Fallback destinations for users who haven't connected an org token.
+// All are public Figma community files and open via figma.openExternal.
+const COMMUNITY_FILES = [
+  { name: 'Material 3 Design Kit',   url: 'https://www.figma.com/community/file/1035203798135708372' },
+  { name: 'iOS 17 UI Kit',           url: 'https://www.figma.com/community/file/1248375255495415511' },
+  { name: 'Wireframe Kit',           url: 'https://www.figma.com/community/file/1005767987960215147' },
+  { name: 'Ant Design 5 UI Kit',     url: 'https://www.figma.com/community/file/831698976089873405'  },
+  { name: 'Figma UI2 Design System', url: 'https://www.figma.com/community/file/928108747914589129'  },
+];
 
 const MOCK_FILES: FigmaFile[] = [
   { key: '1', name: 'Design System v4',   team: 'Core UI',    lastModified: '2h ago',   author: 'maya_c',   change: 'Reworked button + input tokens' },
@@ -1365,7 +1376,7 @@ export function ClubFigmaWorld() {
     setShowWardrobe(false);
   }, []);
 
-  const startTransit = useCallback((wireIdx: number) => {
+  const startTransit = useCallback((wireIdx: number, onComplete?: () => void) => {
     const { W: wW, H: wH } = worldRef.current;
     const wires = [
       { p0x: 0, p0y: wH * 0.25, p1x: wW * 0.28, p1y: wH * 0.10, p2x: wW * 0.72, p2y: wH * 0.40, p3x: wW, p3y: wH * 0.25 },
@@ -1373,8 +1384,26 @@ export function ClubFigmaWorld() {
       { p0x: 0, p0y: wH * 0.72, p1x: wW * 0.28, p1y: wH * 0.56, p2x: wW * 0.72, p2y: wH * 0.86, p3x: wW, p3y: wH * 0.72 },
     ];
     const w = wires[wireIdx];
-    transitRef.current = { progress: 0, targetRoom: 'office', ...w };
+    transitRef.current = { progress: 0, targetRoom: 'office', onComplete, ...w };
   }, []);
+
+  // Open a Figma URL — via figma.openExternal in the plugin, window.open in browser.
+  const openFigmaUrl = useCallback((url: string) => {
+    try { window.parent.postMessage({ pluginMessage: { type: 'OPEN_URL', url } }, '*'); } catch { /* not in plugin */ }
+    try { window.open(url, '_blank', 'noopener,noreferrer'); } catch { /* ignore */ }
+  }, []);
+
+  // Called when a pipeline wire transit completes: opens an org file if connected,
+  // otherwise a random Figma community file.
+  const openPipelineFile = useCallback(() => {
+    const cfg = figmaConfigRef.current;
+    const orgFiles = figmaFiles.filter(f => f.url);
+    if (cfg?.token && orgFiles.length) {
+      openFigmaUrl(orgFiles[Math.floor(Math.random() * orgFiles.length)].url!);
+    } else {
+      openFigmaUrl(COMMUNITY_FILES[Math.floor(Math.random() * COMMUNITY_FILES.length)].url);
+    }
+  }, [figmaFiles, openFigmaUrl]);
 
   // Set files + preload their thumbnails into the canvas image cache.
   const loadFiles = useCallback((files: FigmaFile[]) => {
@@ -1445,8 +1474,8 @@ export function ClubFigmaWorld() {
     if (room === 'arcade')   zonesRef.current = [];  // FigConsole overlay owns the arcade
     if (room === 'office')   zonesRef.current = buildOfficeZones(worldW, worldH, goTo, viewFrame, figmaFiles.length);
     if (room === 'garden')   zonesRef.current = buildGardenZones(worldW, worldH, goTo);
-    if (room === 'pipeline') zonesRef.current = buildPipelineZones(worldW, worldH, goTo, startTransit);
-  }, [room, worldW, worldH, goTo, viewFrame, figmaFiles.length, openWardrobe, startTransit]);
+    if (room === 'pipeline') zonesRef.current = buildPipelineZones(worldW, worldH, goTo, startTransit, openPipelineFile);
+  }, [room, worldW, worldH, goTo, viewFrame, figmaFiles.length, openWardrobe, startTransit, openPipelineFile]);
 
   // Init NPCs + recentre the avatar/camera when the room (or size) changes.
   useEffect(() => {
@@ -1597,8 +1626,10 @@ export function ClubFigmaWorld() {
         a.y = cbez(tp, tr.p0y, tr.p1y, tr.p2y, tr.p3y);
         a.vx = 0; a.vy = 0;
         if (tp >= 1) {
+          const { targetRoom, onComplete } = tr;
           transitRef.current = null;
-          goToRef.current(tr.targetRoom);
+          goToRef.current(targetRoom);
+          onComplete?.();
         }
       } else if (m.x > -9000) {
         // The mouse points to a world location through the current camera;
