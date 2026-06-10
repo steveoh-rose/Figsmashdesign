@@ -83,7 +83,16 @@ function ToolIcon({ tool, color }: { tool: number; color: string }) {
       {tool === 1 && <path d="M8 3 V21 M16 3 V21 M3 8 H21 M3 16 H21" stroke={color} strokeWidth="2.2" strokeLinecap="square" fill="none" />}
       {tool === 2 && <><path d="M6.5 18 L14.5 5.5 L18 7.8 L10 20.3 Z" fill={color} /><path d="M6.5 18 L10 20.3 L5.6 21 Z" fill={color} /></>}
       {tool === 3 && <path d="M5 5 H19 M12 5 V19 M9 19 H15" stroke={color} strokeWidth="2.4" strokeLinecap="square" fill="none" />}
-      {tool === 4 && <path d="M12 3 L16.5 7.5 L12 12 L7.5 7.5 Z M12 12 L16.5 16.5 L12 21 L7.5 16.5 Z" fill="none" stroke={color} strokeWidth="2" strokeLinejoin="round" />}
+      {tool === 4 && <>
+        {/* Upper-left & lower-right: dim facets */}
+        <path d="M12 3 L3 12 L12 12 Z"  fill={color} fillOpacity="0.42" />
+        <path d="M21 12 L12 21 L12 12 Z" fill={color} fillOpacity="0.42" />
+        {/* Upper-right & lower-left: bright facets */}
+        <path d="M12 3 L12 12 L21 12 Z"  fill={color} />
+        <path d="M3 12 L12 21 L12 12 Z"  fill={color} />
+        {/* Outer diamond edge */}
+        <path d="M12 3 L21 12 L12 21 L3 12 Z" fill="none" stroke={color} strokeWidth="1.5" strokeLinejoin="miter" />
+      </>}
     </svg>
   );
 }
