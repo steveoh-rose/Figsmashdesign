@@ -520,10 +520,10 @@ function drawArcadeRoom(ctx: CanvasRenderingContext2D, W: number, H: number, zon
     figsmash: '#ef5d52', fighero: '#4d7cff', figcontrast: '#2ec4b6', figalign: '#ff9f43',
   };
   const cabNames: Record<string, string> = {
-    figsmash: 'FIGSMASH', fighero: 'SHORTCUT\nHERO', figcontrast: 'FIG\nCONTRAST', figalign: 'FIGALIGN',
+    figsmash: 'FIGSMASH', fighero: 'SHORTCUT\nHERO', figcontrast: 'FIG\nCONTRAST', figalign: 'MATCH DA\nSHAPE',
   };
   const cabTags: Record<string, string> = {
-    figsmash: 'BRAWLER', fighero: 'SIMON', figcontrast: 'CALIBRATE', figalign: 'SHAPE',
+    figsmash: 'BRAWLER', fighero: 'SIMON', figcontrast: 'CALIBRATE', figalign: 'MEMORY',
   };
 
   cabZones.forEach((z) => {
@@ -1211,7 +1211,7 @@ function buildCampZones(W: number, H: number, goTo: (r: RoomId) => void, openWar
 function buildArcadeZones(W: number, H: number, playGame: (g: GameId) => void, goTo: (r: RoomId) => void): Zone[] {
   const cw = 108, ch = 148;
   const games: GameId[] = ['figsmash', 'fighero', 'figcontrast', 'figalign'];
-  const labels: Record<GameId, string> = { figsmash: 'FigSmash', fighero: 'Shortcut Hero', figcontrast: 'FigContrast', figalign: 'FigAlign' };
+  const labels: Record<GameId, string> = { figsmash: 'FigSmash', fighero: 'Shortcut Hero', figcontrast: 'FigContrast', figalign: 'Match da Shape' };
   const step = (W - 80) / 4;
   return [
     ...games.map((g, i) => ({

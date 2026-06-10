@@ -56,7 +56,7 @@ const CARTS: Cart[] = [
   { id: 'figsmash', name: 'FigSmash', tag: 'BRAWLER', blurb: 'KO the Unaligned Stakeholder.', color: '#ef5d52', art: <VoxelGhost /> },
   { id: 'fighero', name: 'Shortcut Hero', tag: 'SIMON', blurb: 'Repeat the shortcut sequence.', color: '#4d7cff', art: <VoxelSmiley /> },
   { id: 'figcontrast', name: 'FigContrast', tag: 'CALIBRATE', blurb: 'Memorise + rebuild the colour.', color: '#2ec4b6', art: <VoxelEye /> },
-  { id: 'figalign', name: 'FigAlign', tag: 'SHAPE', blurb: 'Memorise + rebuild the shape.', color: '#ff9f43', art: <VoxelTriangle /> },
+  { id: 'figalign', name: 'Match da Shape', tag: 'MEMORY', blurb: 'Memorise + rebuild the shape.', color: '#ff9f43', art: <VoxelTriangle /> },
 ];
 
 const SMASH_DESIGN = `data:image/svg+xml;utf8,${encodeURIComponent(
