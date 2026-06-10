@@ -1,0 +1,343 @@
+/* ===================================================================
+   Club Figma World — canvas world + overlay styles
+   Aesthetic ported from rip-designs-catharsis-garden: a warm "floating
+   island" pixel look — teal sky, cream paper panels, ink line-art, soft
+   rounded pills, Pixelify Sans for UI + Press Start 2P for tiny accents.
+=================================================================== */
+@import url('https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;500;600;700&family=Press+Start+2P&display=swap');
+
+:root {
+  --cf-sky:        #3a7d8c;
+  --cf-sky-deep:   #2b5e6b;
+  --cf-sky-night:  #1e404a;
+  --cf-paper:      #f3edc8;
+  --cf-paper-edge: #d9d09a;
+  --cf-ink:        #2b2b3a;
+  --cf-ink-soft:   rgba(43,43,58,0.62);
+  --cf-ink-faint:  rgba(43,43,58,0.18);
+  --cf-red:        #d24b3e;
+  --cf-green:      #5a9b4a;
+  --cf-cloud:      #8fcad6;
+  --cf-yellow:     #e6c64a;
+  --cf-script:     'Pixelify Sans', monospace;
+  --cf-tiny:       'Press Start 2P', monospace;
+}
+
+/* ── Root shell ──────────────────────────────────────────────────── */
+.cfw-root {
+  position: fixed; inset: 0; z-index: 10;
+  overflow: hidden;
+  cursor: none; /* we draw our own cursor */
+  user-select: none;
+  background: var(--cf-sky-night);
+}
+
+.cfw-canvas {
+  position: absolute; inset: 0;
+  display: block; width: 100%; height: 100%;
+  image-rendering: pixelated;
+}
+
+/* ── Custom cursor ───────────────────────────────────────────────── */
+.cfw-cursor {
+  position: fixed; left: 0; top: 0; pointer-events: none; z-index: 9999;
+  transform: translate(-200px, -200px);
+  will-change: transform;
+}
+.cfw-cursor svg { display: block; filter: drop-shadow(0 2px 3px rgba(20,20,60,0.45)); }
+.cfw-cursor-name {
+  position: absolute; top: 18px; left: 14px;
+  font-family: var(--cf-script); font-weight: 600; font-size: 11px;
+  color: var(--cf-ink);
+  background: var(--cf-paper); padding: 1px 8px; border-radius: 999px;
+  box-shadow: 0 3px 8px rgba(20,20,60,0.35);
+  white-space: nowrap; pointer-events: none;
+}
+
+/* ── Zone prompt ─────────────────────────────────────────────────── */
+.cfw-prompt {
+  position: fixed; bottom: 76px; left: 50%; transform: translateX(-50%);
+  z-index: 50;
+  display: flex; flex-direction: column; align-items: center; gap: 5px;
+  background: var(--cf-paper);
+  border-radius: 18px;
+  box-shadow: 0 18px 40px rgba(10,10,60,0.45), inset 0 0 0 1.5px var(--cf-paper-edge);
+  padding: 13px 24px;
+  animation: cfw-prompt-in 0.18s ease-out;
+  pointer-events: none;
+}
+@keyframes cfw-prompt-in {
+  from { opacity: 0; transform: translateX(-50%) translateY(8px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+.cfw-prompt-hint {
+  font-family: var(--cf-script); font-weight: 700; font-size: 15px; color: var(--cf-ink);
+  letter-spacing: .01em;
+}
+.cfw-prompt-action {
+  font-family: var(--cf-script); font-weight: 500; font-size: 12px; color: var(--cf-ink-soft);
+}
+.cfw-prompt-action kbd {
+  font-family: var(--cf-tiny); font-size: 8px;
+  color: var(--cf-paper); background: var(--cf-ink);
+  border-radius: 5px; padding: 3px 6px; margin: 0 1px;
+}
+.cfw-prompt-hi {
+  font-family: var(--cf-tiny); font-size: 8px; color: var(--cf-sky-deep);
+}
+
+/* ── Minimap / room nav ──────────────────────────────────────────── */
+.cfw-minimap {
+  position: fixed; top: 16px; right: 16px; z-index: 60;
+  display: flex; gap: 6px;
+  background: var(--cf-paper);
+  padding: 6px; border-radius: 999px;
+  box-shadow: 0 10px 26px rgba(10,10,60,0.4), inset 0 0 0 1.5px var(--cf-paper-edge);
+}
+.cfw-mm-btn {
+  display: flex; align-items: center; gap: 6px;
+  font-family: var(--cf-script); font-weight: 700; font-size: 11px; letter-spacing: .04em;
+  color: var(--cf-ink-soft); background: transparent;
+  border: none; padding: 7px 12px; cursor: pointer; border-radius: 999px;
+  transition: background .14s, color .14s, transform .12s;
+}
+.cfw-mm-btn:hover { color: var(--cf-ink); transform: translateY(-1px); }
+.cfw-mm-btn.active { color: var(--cf-paper); background: var(--cf-ink); }
+.cfw-mm-btn span { display: none; }
+@media (min-width: 760px) { .cfw-mm-btn span { display: inline; } }
+
+/* ── Live presence bar ───────────────────────────────────────────── */
+.cfw-presence {
+  position: fixed; bottom: 16px; left: 16px; z-index: 60;
+  display: flex; align-items: center; gap: 10px;
+  background: var(--cf-paper);
+  padding: 7px 16px; border-radius: 999px;
+  box-shadow: 0 10px 26px rgba(10,10,60,0.4), inset 0 0 0 1.5px var(--cf-paper-edge);
+  pointer-events: none;
+}
+.cfw-presence-label {
+  font-family: var(--cf-tiny); font-size: 8px; color: var(--cf-green);
+  animation: cfw-blink 2s step-end infinite;
+}
+@keyframes cfw-blink { 50% { opacity: 0.35; } }
+.cfw-presence-dot {
+  font-family: var(--cf-script); font-weight: 600; font-size: 12px; letter-spacing: .02em;
+}
+
+/* ── Expanded frame modal ────────────────────────────────────────── */
+.cfw-frame-modal {
+  position: fixed; inset: 0; z-index: 80;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(4,0,14,0.8);
+  backdrop-filter: blur(4px);
+  cursor: default;
+  animation: cfw-fadein .2s ease-out;
+}
+@keyframes cfw-fadein { from { opacity: 0; } to { opacity: 1; } }
+.cfw-frame-modal-inner {
+  width: min(680px, 92vw);
+  background: var(--cf-paper);
+  border-radius: 22px; overflow: hidden;
+  box-shadow: 0 40px 90px rgba(10,10,60,0.55), inset 0 0 0 1.5px var(--cf-paper-edge);
+  display: flex; flex-direction: column;
+  animation: cfw-slide-up .2s ease-out;
+}
+@keyframes cfw-slide-up { from { transform: translateY(16px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+.cfw-frame-header {
+  display: flex; align-items: center; gap: 10px; padding: 14px 18px;
+}
+.cfw-frame-header span:first-child {
+  font-family: var(--cf-script); font-weight: 700; font-size: 17px; color: var(--cf-ink); flex: 1;
+}
+.cfw-frame-team {
+  font-family: var(--cf-script); font-weight: 600; font-size: 12px;
+  color: var(--cf-paper) !important; background: var(--cf-sky-deep);
+  padding: 3px 10px; border-radius: 999px;
+}
+.cfw-frame-header button {
+  font-family: var(--cf-script); font-size: 18px;
+  color: var(--cf-ink-soft); background: transparent; border: none; cursor: pointer; padding: 2px 6px;
+  line-height: 1;
+}
+.cfw-frame-header button:hover { color: var(--cf-ink); }
+.cfw-frame-preview {
+  position: relative; margin: 0 18px; border-radius: 14px; overflow: hidden;
+  background: var(--cf-sky-night);
+  box-shadow: inset 0 0 0 1.5px var(--cf-paper-edge);
+}
+.cfw-frame-canvas { display: block; width: 100%; height: auto; image-rendering: pixelated; }
+.cfw-frame-img { display: block; width: 100%; height: auto; max-height: 60vh; object-fit: contain; background: var(--cf-sky-night); }
+.cfw-frame-mcp-badge {
+  position: absolute; top: 10px; right: 10px;
+  font-family: var(--cf-tiny); font-size: 7px; color: var(--cf-ink);
+  background: var(--cf-yellow); padding: 4px 8px; border-radius: 999px;
+}
+.cfw-frame-change {
+  margin: 12px 18px 0; padding: 10px 12px;
+  background: rgba(210,75,62,0.10); border-radius: 12px;
+  display: flex; flex-direction: column; gap: 3px;
+}
+.cfw-frame-change-label {
+  font-family: var(--cf-tiny); font-size: 7px; color: var(--cf-red); letter-spacing: .08em;
+}
+.cfw-frame-change-text {
+  font-family: var(--cf-script); font-weight: 600; font-size: 14px; color: var(--cf-ink); line-height: 1.4;
+}
+.cfw-frame-footer {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 18px;
+  font-family: var(--cf-script); font-weight: 500; font-size: 12px; color: var(--cf-ink-soft);
+}
+.cfw-frame-open {
+  font-family: var(--cf-script); font-weight: 700; font-size: 13px; color: var(--cf-paper);
+  background: var(--cf-ink); border: none; padding: 9px 16px; cursor: pointer; border-radius: 999px;
+  transition: transform .12s, background .15s;
+}
+.cfw-frame-open:hover { background: var(--cf-sky-deep); transform: translateY(-1px); }
+.cfw-frame-open:disabled { opacity: 0.4; cursor: default; transform: none; }
+
+/* ── Game modal ──────────────────────────────────────────────────── */
+.cfw-game-modal {
+  position: fixed; inset: 0; z-index: 90;
+  display: flex; flex-direction: column;
+  background: #0d0718;
+  animation: cfw-fadein .18s ease-out;
+  cursor: auto;
+}
+.cfw-game-header {
+  display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;
+  padding: 0 16px; height: 46px;
+  background: var(--cf-paper); box-shadow: inset 0 -1.5px 0 var(--cf-paper-edge);
+}
+.cfw-game-title {
+  font-family: var(--cf-script); font-weight: 700; font-size: 16px; color: var(--cf-ink);
+  letter-spacing: .04em;
+}
+.cfw-game-eject {
+  font-family: var(--cf-script); font-weight: 700; font-size: 12px; color: var(--cf-paper);
+  background: var(--cf-ink); border: none; padding: 7px 14px; cursor: pointer; border-radius: 999px;
+  transition: transform .12s, background .15s;
+}
+.cfw-game-eject:hover { background: var(--cf-red); transform: translateY(-1px); }
+.cfw-game-screen {
+  flex: 1; position: relative; overflow: hidden;
+  /* dark CRT screen */
+  background: #15161f;
+  background-image: radial-gradient(rgba(255,255,255,0.04) 1px, transparent 1px);
+  background-size: 16px 16px;
+}
+
+/*
+  Game styles (the fc-* classes for FigHero / FigContrast / FigAlign) now
+  live in ./console/console.css, imported by ClubFigmaWorld.tsx and kept in
+  sync with the rip-designs-catharsis-garden source. Do not re-inline them
+  here — that caused drift when the games were updated.
+*/
+
+/* ── Connect-your-org panel ──────────────────────────────────────── */
+.cfw-mm-connect.connected { color: var(--cf-green); }
+.cfw-connect-modal {
+  position: fixed; inset: 0; z-index: 95;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(20,20,60,0.55); backdrop-filter: blur(4px);
+  cursor: default; animation: cfw-fadein .18s ease-out;
+}
+.cfw-connect-inner {
+  width: min(440px, 92vw);
+  background: var(--cf-paper);
+  border-radius: 22px; padding: 22px 24px 20px;
+  box-shadow: 0 40px 90px rgba(10,10,60,0.55), inset 0 0 0 1.5px var(--cf-paper-edge);
+  display: flex; flex-direction: column; gap: 8px;
+  animation: cfw-slide-up .2s ease-out;
+}
+.cfw-connect-head { display: flex; align-items: center; justify-content: space-between; }
+.cfw-connect-head span {
+  font-family: var(--cf-tiny); font-size: 11px; color: var(--cf-ink); letter-spacing: .06em;
+}
+.cfw-connect-head button {
+  font-family: var(--cf-script); font-size: 18px; line-height: 1;
+  color: var(--cf-ink-soft); background: none; border: none; cursor: pointer;
+}
+.cfw-connect-head button:hover { color: var(--cf-ink); }
+.cfw-connect-desc {
+  font-family: var(--cf-script); font-weight: 500; font-size: 13px; line-height: 1.5;
+  color: var(--cf-ink-soft); margin: 2px 0 6px;
+}
+.cfw-connect-label {
+  font-family: var(--cf-script); font-weight: 700; font-size: 12px; color: var(--cf-ink);
+  margin-top: 6px;
+}
+.cfw-connect-input {
+  font-family: var(--cf-script); font-size: 14px; color: var(--cf-ink);
+  background: rgba(255,255,255,0.6); border: none; border-radius: 10px;
+  padding: 10px 12px; outline: none;
+  box-shadow: inset 0 0 0 1.5px var(--cf-paper-edge);
+}
+.cfw-connect-input:focus { box-shadow: inset 0 0 0 1.5px var(--cf-sky-deep); }
+.cfw-connect-hint {
+  font-family: var(--cf-script); font-weight: 500; font-size: 11px; color: var(--cf-ink-soft);
+  text-decoration: none;
+}
+a.cfw-connect-hint:hover { color: var(--cf-sky-deep); text-decoration: underline; }
+.cfw-connect-error {
+  font-family: var(--cf-script); font-weight: 600; font-size: 12px; color: var(--cf-red);
+  background: rgba(210,75,62,0.12); border-radius: 8px; padding: 8px 10px;
+}
+.cfw-connect-actions { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
+.cfw-connect-actions button {
+  font-family: var(--cf-script); font-weight: 700; font-size: 13px; cursor: pointer;
+  border: none; border-radius: 999px; padding: 9px 16px; transition: transform .12s, background .15s;
+}
+.cfw-connect-actions button:hover { transform: translateY(-1px); }
+.cfw-connect-save { background: var(--cf-ink); color: var(--cf-paper); }
+.cfw-connect-save:hover { background: var(--cf-sky-deep); }
+.cfw-connect-cancel { background: transparent; color: var(--cf-ink-soft); box-shadow: inset 0 0 0 1.5px var(--cf-paper-edge); }
+.cfw-connect-clear { background: transparent; color: var(--cf-red); box-shadow: inset 0 0 0 1.5px rgba(210,75,62,0.4); }
+
+/* ── Style Wardrobe overlay ──────────────────────────────────────── */
+.cfw-wardrobe-modal {
+  position: fixed; inset: 0; z-index: 95;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(20,20,60,0.55); backdrop-filter: blur(4px);
+  cursor: default; animation: cfw-fadein .18s ease-out;
+}
+.cfw-wardrobe-inner {
+  width: min(520px, 92vw);
+  background: var(--cf-paper);
+  border-radius: 22px; padding: 22px 24px 20px;
+  box-shadow: 0 40px 90px rgba(10,10,60,0.55), inset 0 0 0 1.5px var(--cf-paper-edge);
+  display: flex; flex-direction: column; gap: 10px;
+  animation: cfw-slide-up .2s ease-out;
+}
+.cfw-wardrobe-head { display: flex; align-items: center; justify-content: space-between; }
+.cfw-wardrobe-head span { font-family: var(--cf-tiny); font-size: 11px; color: var(--cf-ink); letter-spacing: .06em; }
+.cfw-wardrobe-head button { font-family: var(--cf-script); font-size: 18px; line-height: 1; color: var(--cf-ink-soft); background: none; border: none; cursor: pointer; }
+.cfw-wardrobe-head button:hover { color: var(--cf-ink); }
+.cfw-wardrobe-desc { font-family: var(--cf-script); font-weight: 500; font-size: 13px; line-height: 1.5; color: var(--cf-ink-soft); margin: 0; }
+.cfw-wardrobe-grid {
+  display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px;
+  margin-top: 6px;
+}
+.cfw-wardrobe-char {
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  padding: 14px 8px 10px;
+  background: rgba(255,255,255,0.5);
+  border: 2px solid var(--cf-paper-edge); border-radius: 16px;
+  cursor: pointer; transition: border-color .14s, background .14s, transform .12s;
+}
+.cfw-wardrobe-char:hover { background: rgba(255,255,255,0.8); transform: translateY(-2px); border-color: var(--char-color, var(--cf-sky)); }
+.cfw-wardrobe-char.active { background: rgba(255,255,255,0.9); border-color: var(--char-color, var(--cf-sky)); box-shadow: 0 0 0 3px color-mix(in srgb, var(--char-color, var(--cf-sky)) 30%, transparent); }
+.cfw-wardrobe-char span { font-family: var(--cf-tiny); font-size: 6px; color: var(--cf-ink); text-align: center; line-height: 1.4; }
+
+/* ── FigSmash brawler host ────────────────────────────────────────── */
+/*
+  The FigSmash DOM (canvas #c + HUD + toolbar + screens) is mounted once and
+  kept hidden. FigConsole adds `fc-smash` to <body> when a match starts, which
+  reveals it; the engine renders into #c only while a match is live.
+*/
+.cf-figsmash-host { display: none; }
+body.fc-smash .cf-figsmash-host { display: block; }
+/* During a match, hide the lounge chrome so the arena is unobstructed. */
+body.fc-smash .cfw-minimap,
+body.fc-smash .cfw-presence,
+body.fc-smash .cfw-cursor { display: none !important; }

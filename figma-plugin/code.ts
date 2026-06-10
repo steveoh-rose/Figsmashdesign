@@ -103,9 +103,41 @@ async function send() {
 	}
 	busy = false;
 }
+async function sendTeamFiles() {
+	var files = [];
+	try {
+		var pages = figma.root.children;
+		for (var pi = 0; pi < pages.length && files.length < 6; pi++) {
+			var page = pages[pi];
+			if (!('children' in page)) continue;
+			var children = (page as PageNode).children;
+			for (var fi = 0; fi < children.length && files.length < 6; fi++) {
+				var node = children[fi];
+				var t = node.type;
+				if (t !== 'FRAME' && t !== 'COMPONENT' && t !== 'COMPONENT_SET') continue;
+				if (node.visible === false) continue;
+				var bb = (node as FrameNode).absoluteBoundingBox;
+				if (!bb || bb.width < 4 || bb.height < 4) continue;
+				try {
+					var bytes = await (node as FrameNode).exportAsync({ format: 'PNG', constraint: { type: 'WIDTH', value: 180 } });
+					files.push({
+						key: page.id + '_' + fi,
+						name: node.name,
+						team: page.name,
+						thumbnail: 'data:image/png;base64,' + figma.base64Encode(bytes),
+						lastModified: 'now',
+					});
+				} catch (e) { /* skip frames that can't export */ }
+			}
+		}
+	} catch (e) { /* fallback: UI will use mock data */ }
+	figma.ui.postMessage({ type: 'TEAM_FILES', files: files });
+}
+
 figma.ui.onmessage = function (msg) {
 	if (msg && msg.type === 'refresh') send();
 	if (msg && msg.type === 'close') figma.closePlugin();
+	if (msg && msg.type === 'GET_TEAM_FILES') { sendTeamFiles(); }
 	if (msg && msg.type === 'launch') {
 		var urlLen = (msg.url || '').length;
 		try {

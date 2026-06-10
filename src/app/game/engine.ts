@@ -120,7 +120,32 @@ const MAPS=[
 let currentMap=MAPS[0], pendingMap=MAPS[0];
 let _deepLinkImported = false;
 try{ const _sf=localStorage.getItem('figsmash.frame'); if(_sf) customFrame=JSON.parse(_sf); }catch(e){}
-function spawnProps(){ (currentMap.build||spawnSpotify)(); }
+// RIP Designs: an uploaded design image, sliced into destructible tiles, is the
+// stage the AI ("Heartless Client") tries to smash and you defend.
+let imageStage=null;        // { img, name, image:dataUrl, palette:[] }
+let currentDesign=null;     // mirror used by captureBattleDNA after a match
+// The design has health. It starts at 100% and the AI ("Heartless Client")
+// chips it away by smashing tiles. If it hits 0% you lose; KO the client to win.
+let designHP=100, designTileTotal=12, designAtkCd=2.5;
+const SABOTAGE_RANGE=360;   // if you back off past this, the client runs at the design
+const RIP_KO_TARGET=3;      // KOs of the client needed to win
+const RIP_KO_CHUNK=12;      // design % the client smashes each time it KOs you
+function buildImageStage(img, name){ props=[];
+  const cols=4, rows=3, fw=img.naturalWidth||img.width||4, fh=img.naturalHeight||img.height||3;
+  const stageW=Math.min(W*0.6, 700), scale=stageW/fw, stageH=fh*scale;
+  const ofx=W/2-stageW/2, ofy=H*0.46-stageH/2, tw=fw/cols, th=fh/rows;
+  for(let r=0;r<rows;r++) for(let c=0;c<cols;c++){
+    const w=tw*scale, h=th*scale, cx=ofx+c*w+w/2, cy=ofy+r*h+h/2;
+    props.push(mkProp('frameNode', cx, cy, Math.max(22,w), Math.max(22,h), { img, sx:c*tw, sy:r*th, sw:tw, sh:th, c1:'#9aa0b5' }));
+  }
+  designTileTotal=cols*rows; designHP=100; designAtkCd=2.5; }
+function designTiles(){ const t=[]; for(const o of props) if(o.type==='frameNode') t.push(o); return t; }
+function samplePalette(img){ try{ const cv=document.createElement('canvas'); cv.width=24; cv.height=24; const g=cv.getContext('2d'); g.drawImage(img,0,0,24,24); const d=g.getImageData(0,0,24,24).data; const buckets={};
+    for(let i=0;i<d.length;i+=4){ if(d[i+3]<128) continue; const r=d[i]>>5, gg=d[i+1]>>5, b=d[i+2]>>5; const k=(r<<6)|(gg<<3)|b; buckets[k]=(buckets[k]||0)+1; }
+    const top=Object.keys(buckets).sort((a,b)=>buckets[b]-buckets[a]).slice(0,4);
+    const hex=top.map(k=>{ k=+k; const r=((k>>6)&7)<<5, g2=((k>>3)&7)<<5, b=(k&7)<<5; return '#'+[r,g2,b].map(v=>(v+16).toString(16).padStart(2,'0')).join(''); });
+    return hex.length?hex:['#0052CC','#FF5630','#F4F5F7']; }catch(e){ return ['#0052CC','#FF5630','#F4F5F7']; } }
+function spawnProps(){ if(imageStage&&imageStage.img&&imageStage.img.complete){ buildImageStage(imageStage.img, imageStage.name); return; } (currentMap.build||spawnSpotify)(); }
 spawnProps();
 
 let hitstop=0,whiteFlash=0,koBanner=0,koTxt='K.O.';
@@ -233,6 +258,8 @@ function aiThink(dt){ if(cpu.respawn>0||cpu.stun>0||cpu.dash) return;
   if(lvl.canDodge && b.dodgeCd<=0){ for(const o of props){ if(o.held||o.owner!==player||o.grace>0)continue; const sp=Math.hypot(o.vx,o.vy); if(sp<260)continue; const dx=cpu.x-o.x,dy=cpu.y-o.y,d=Math.hypot(dx,dy); if(d<200&&(o.vx*dx+o.vy*dy)>0){ const perp=(o.vx*dy-o.vy*dx)>0?1:-1; b.tgx=cpu.x+(-o.vy)/sp*220*perp; b.tgy=cpu.y+(o.vx)/sp*220*perp; b.state='dodge'; b.dodgeCd=0.5; b.cd=0.18; return; } } }
   if(b.cd>0) return; b.cd=T.aiReaction*(0.8+Math.random()*0.5);
   const dP=Math.hypot(player.x-cpu.x,player.y-cpu.y); const standoff=300-T.aiAggro*120; b.standoff=standoff;
+  // RIP: when you're not pressuring it (far away or KO'd), the client breaks off and goes for the design.
+  if(_ripDriven && cpu.dmg<=92){ const tile=designTarget(); if(tile && (player.respawn>0 || dP>SABOTAGE_RANGE)){ b.state='sabotage'; b._tile=tile; b.tgx=tile.x; b.tgy=tile.y; return; } }
   if(cpu.dmg>92) b.state='flee'; else if(lvl.canPunch&&dP<PUNCH_RANGE+10&&cpu.punchCd<=0) b.state='punch'; else if(lvl.canThrow&&cpu.held) b.state='throw'; else if(player.dmg>70+(1-T.aiAggro)*25) b.state='pressure'; else b.state='seek';
   if(b.state==='flee'){ const a=Math.atan2(cpu.y-player.y,cpu.x-player.x); b.tgx=clamp(cpu.x+Math.cos(a)*260,60,W-60); b.tgy=clamp(cpu.y+Math.sin(a)*260,60,H-60); }
   else if(b.state==='pressure'){ b.tgx=player.x; b.tgy=player.y; }
@@ -241,9 +268,13 @@ function aiThink(dt){ if(cpu.respawn>0||cpu.stun>0||cpu.dash) return;
   if(b.state==='seek' && drops.length && !cpu.invinc && !(cpu.gun>0)){ const d=nearestDrop(cpu); if(d && Math.hypot(d.x-cpu.x,d.y-cpu.y)<460){ b.tgx=d.x; b.tgy=d.y; b._t=null; } }
 }
 function aiAct(dt){ if(cpu.respawn>0||cpu.stun>0||cpu.dash) return;
-  if(lvl.canPunch && cpu.char&&cpu.char.ability && (cpu.specialCd||0)<=0 && Math.random()<dt*0.7 && Math.hypot(player.x-cpu.x,player.y-cpu.y)<640){ if(cpu.char.ability==='energy'){ fireEnergy(cpu,0.6+Math.random()*0.6); cpu.specialCd=1.3; } else useSpecial(cpu); }
   const b=cpu.brain; cpu.tx=b.tgx!=null?b.tgx:cpu.x; cpu.ty=b.tgy!=null?b.tgy:cpu.y;
-  if(lvl.driftOnly){ cpu.tx=player.x; cpu.ty=player.y; return; }   // just floats toward you, never attacks
+  // RIP sabotage: run to the design and smash a tile when adjacent.
+  if(_ripDriven && b.state==='sabotage'){ let o=b._tile; if(!o||props.indexOf(o)<0) o=b._tile=designTarget();
+    if(o){ cpu.tx=o.x; cpu.ty=o.y; if(Math.hypot(o.x-cpu.x,o.y-cpu.y) < (o.w||40)/2+46){ b.sabCd=(b.sabCd||0)-dt; if(b.sabCd<=0){ smashDesignTile(o); b.sabCd=(lvl.designRate||3)*(0.7+Math.random()*0.5); b._tile=designTarget(); } } }
+    return; }
+  if(lvl.canPunch && cpu.char&&cpu.char.ability && (cpu.specialCd||0)<=0 && Math.random()<dt*0.7 && Math.hypot(player.x-cpu.x,player.y-cpu.y)<640){ if(cpu.char.ability==='energy'){ fireEnergy(cpu,0.6+Math.random()*0.6); cpu.specialCd=1.3; } else useSpecial(cpu); }
+  if(lvl.driftOnly){ cpu.tx=player.x; cpu.ty=player.y; return; }
   const menu = overTool||overPanel;                                 // truce while you're picking a tool / in settings
   if(lvl.canThrow && b.state==='seek'&&!cpu.held){ const o=b._t; if(o&&!o.held&&Math.hypot(o.x-cpu.x,o.y-cpu.y)<GRAB_RANGE+10){ grab(cpu,o); const i=props.indexOf(o); if(i>=0){props.splice(i,1);props.push(o);} b.state='throw'; } }
   if(lvl.canThrow && b.state==='throw'&&cpu.held && !menu){ const dist=Math.hypot(player.x-cpu.x,player.y-cpu.y); if(dist<b.standoff+60){ b.wind+=dt; if(b.wind>lvl.wind){ const lead=lvl.leadAim?0.18:0, tx=player.x+player.vx*lead, ty=player.y+player.vy*lead; const a=Math.atan2(ty-cpu.y,tx-cpu.x)+(Math.random()-0.5)*T.aiJitter*2; throwAt(cpu,cpu.held,cpu.x+Math.cos(a)*400,cpu.y+Math.sin(a)*400,1100); b.wind=0; } } else b.wind=0; } else b.wind=0;
@@ -251,6 +282,11 @@ function aiAct(dt){ if(cpu.respawn>0||cpu.stun>0||cpu.dash) return;
   if(lvl.canPunch && !menu && cpu.gun>0 && (cpu.gunCd||0)<=0 && Math.hypot(player.x-cpu.x,player.y-cpu.y)<720){ fireBolt(cpu); }
 }
 function nearestFreeProp(){ let best=null,bd=1e9; for(const o of props){ if(o.held||o.isLogo)continue; const d=Math.hypot(o.x-cpu.x,o.y-cpu.y); if(d<bd){bd=d;best=o;} } return best; }
+// ---- RIP Designs: the client breaks the design ----
+function designTarget(){ const t=designTiles(); if(!t.length) return null; let best=t[0],bd=1e9; for(const o of t){ const d=Math.hypot(o.x-cpu.x,o.y-cpu.y); if(d<bd){bd=d;best=o;} } return best; }
+function smashDesignTile(o){ const i=props.indexOf(o); if(i<0) return; props.splice(i,1); try{ cutProp(o,(Math.random()-0.5),-0.6,260+Math.random()*160); }catch(e){} designHP=Math.max(0,designHP-100/Math.max(1,designTileTotal)); pop(o.x,o.y-o.h*0.4,'design −'+Math.round(100/designTileTotal)+'%','#ff4d6d'); try{ sndHit(); }catch(e){} addShake(0.35); if(designHP<=0) ripEnd(false); }
+function ripAttackDesign(dt){ if(matchOver||winnerPending||countdown>0) return; if(cpu.respawn>0||(cpu.stun||0)>0||cpu.dash) return; designAtkCd-=dt; if(designAtkCd>0) return; designAtkCd=(lvl.designRate||2.5)*(0.8+Math.random()*0.4); const o=designTarget(); if(!o){ designHP=0; ripEnd(false); return; } smashDesignTile(o); }
+function ripEnd(youWin){ if(matchOver) return; winnerPending=false; matchOver=true; _arenaActive=false; koBanner=0; try{ window.__ripBattleDNA=captureBattleDNA(); }catch(e){} try{ sndWin(); }catch(e){} try{ window.dispatchEvent(new CustomEvent('ripdesigns:matchend',{detail:{youWin, dna:window.__ripBattleDNA}})); }catch(e){} }
 
 function stepFighter(f,dt){ if(f.dead) return;
   f.punchCd=Math.max(0,f.punchCd-dt); f.sliceCd=Math.max(0,(f.sliceCd||0)-dt); f.punchFx=Math.max(0,f.punchFx-dt); f.hitTimer=Math.max(0,f.hitTimer-dt);
@@ -310,10 +346,16 @@ function physics(dt){
   for(const f of fighters){ if(f.invinc>0 && (f.starCd||0)<=0){ const o=(f===player)?cpu:player; if(Math.hypot(f.x-o.x,f.y-o.y) < hurtR(f)+hurtR(o)+4){ const dx=o.x-f.x,dy=o.y-f.y,l=Math.hypot(dx,dy)||1; applyHit(o,dx/l,dy/l,T.knock*1.7,13,o.x,o.y,f); f.starCd=0.45; shock(o.x,o.y,'#ffd23f'); } } }
   whiteFlash=Math.max(0,whiteFlash-dt*3); koBanner=Math.max(0,koBanner-dt);
 }
-function ko(f){ if(f.respawn>0||matchOver||winnerPending) return; if(f.isPlayer){ scoreCpu++; koTxt='LOST A STOCK'; setTaunt(cpu);} else { scoreYou++; koTxt='K.O.'; } koBanner=1.0; whiteFlash=0.55; hitstop=0.18; addShake(0.95); timeScale=0.18; sndKO(); spark(clamp(f.x,20,W-20),clamp(f.y,20,H-20),f.vx,f.vy,18);
+function ko(f){ if(f.respawn>0||matchOver||winnerPending) return;
+  const clientKO = _ripDriven && !f.isPlayer;
+  if(f.isPlayer){ scoreCpu++; koTxt=_ripDriven?'YOU FELL':'LOST A STOCK'; if(!_ripDriven)setTaunt(cpu);} else { scoreYou++; koTxt=_ripDriven?('CLIENT KO  '+scoreYou+'/'+RIP_KO_TARGET):'K.O.'; }
+  koBanner=1.0; whiteFlash=0.55; hitstop=0.18; addShake(0.95); timeScale=0.18; sndKO(); spark(clamp(f.x,20,W-20),clamp(f.y,20,H-20),f.vx,f.vy,18);
   if(f.held){f.held.held=false;f.held=null;}
   f.dmg=0;f.hitTimer=0;f.scaleTarget=1;f.scaleAmt=1;f.invinc=0;f.gun=0;f.gunCd=0;f.starCd=0;f.dash=null;f.charging=-1;f.stun=0;f.specialCd=0;f.charged=-1;
-  if(scoreYou>=STOCKS_TO_WIN||scoreCpu>=STOCKS_TO_WIN){ winnerPending=true; f.dead=true; f.vx=f.vy=0; setTimeout(showWinScreen,1400); return; }   // out for good on the 5th — no respawn
+  // RIP: KO the client RIP_KO_TARGET times to win; if it KOs you it gets a free shot at the design.
+  if(clientKO && scoreYou>=RIP_KO_TARGET){ winnerPending=true; f.dead=true; f.vx=f.vy=0; setTimeout(()=>ripEnd(true),1400); return; }
+  if(_ripDriven && f.isPlayer){ designHP=Math.max(0,designHP-RIP_KO_CHUNK); pop(W/2,120,'design −'+RIP_KO_CHUNK+'%','#ff4d6d'); if(designHP<=0){ winnerPending=true; f.dead=true; f.vx=f.vy=0; setTimeout(()=>ripEnd(false),1200); return; } }
+  if(!_ripDriven && (scoreYou>=STOCKS_TO_WIN||scoreCpu>=STOCKS_TO_WIN)){ winnerPending=true; f.dead=true; f.vx=f.vy=0; setTimeout(showWinScreen,1400); return; }   // legacy: out for good on the 5th
   f.respawn=RESPAWN_TIME; f.spawnGuard=0; f.x=f.home.x; f.y=-50; f.vx=f.vy=0; f.tx=f.x; f.ty=f.y; f.brain.state='seek'; }
 function triggerForceQuit(target){
   if(fqActive) return; fqActive=true; hitstop=0.25; sndFQ();
@@ -350,7 +392,7 @@ function drawSpotifyEl(o){ const w=o.baseW,h=o.baseH;
   if(o.type==='subscribe'){ ctx.fillStyle=o.c1||'#ff0000'; roundRect(-w/2,-h/2,w,h,h/2); ctx.fill(); ctx.fillStyle='#fff'; ctx.font='800 '+(h*0.4)+'px Inter,JetBrains Mono'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('SUBSCRIBE',0,1); return; }
   if(o.type==='searchbar'){ ctx.fillStyle='#121212'; ctx.strokeStyle='#3a3a3a'; ctx.lineWidth=1.5; roundRect(-w/2,-h/2,w,h,h/2); ctx.fill(); ctx.stroke(); ctx.fillStyle='#888'; ctx.font=(h*0.4)+'px Inter,JetBrains Mono'; ctx.textAlign='left'; ctx.textBaseline='middle'; ctx.fillText('Search',-w/2+14,1); ctx.strokeStyle='#aaa'; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(w/2-17,-1,5,0,6.2832); ctx.stroke(); ctx.beginPath(); ctx.moveTo(w/2-13,3); ctx.lineTo(w/2-9,7); ctx.stroke(); return; }
   if(o.type==='frameNode'){
-    if(o.img && o.img.complete && o.img.naturalWidth){ ctx.shadowColor='rgba(0,0,0,.28)'; ctx.shadowBlur=7; ctx.shadowOffsetY=3; try{ ctx.drawImage(o.img,-w/2,-h/2,w,h); }catch(e){} ctx.shadowColor='transparent'; ctx.shadowOffsetY=0; return; }
+    if(o.img && o.img.complete && o.img.naturalWidth){ ctx.shadowColor='rgba(0,0,0,.28)'; ctx.shadowBlur=7; ctx.shadowOffsetY=3; try{ if(o.sw){ ctx.drawImage(o.img,o.sx,o.sy,o.sw,o.sh,-w/2,-h/2,w,h); } else { ctx.drawImage(o.img,-w/2,-h/2,w,h); } }catch(e){} ctx.shadowColor='transparent'; ctx.shadowOffsetY=0; if(o.sw){ ctx.strokeStyle='rgba(255,255,255,.5)'; ctx.lineWidth=1; ctx.strokeRect(-w/2,-h/2,w,h); } return; }
     ctx.shadowColor='rgba(0,0,0,.22)'; ctx.shadowBlur=6; ctx.shadowOffsetY=3;
     if(o.shape==='ellipse'){ ctx.beginPath(); ctx.ellipse(0,0,w/2,h/2,0,0,6.2832); if(o.fill){ ctx.fillStyle=o.fill; ctx.fill(); } else { ctx.strokeStyle='#9aa0b5'; ctx.lineWidth=1.5; ctx.stroke(); } }
     else if(o.shape!=='text'){ const r=Math.min(o.radius||0,Math.min(w,h)/2); roundRect(-w/2,-h/2,w,h,r); if(o.fill){ ctx.fillStyle=o.fill; ctx.fill(); } else { ctx.strokeStyle='#9aa0b5'; ctx.lineWidth=1.5; ctx.stroke(); } }
@@ -371,7 +413,15 @@ function drawShapeKind(kind,w,h,o){ const rgb=(o&&o.shapeRGB)||'151,71,255', col
   if(kind==='line'){ ctx.lineWidth=Math.max(4,Math.min(w,h)*0.18); ctx.beginPath(); ctx.moveTo(-w/2,h/2); ctx.lineTo(w/2,-h/2); ctx.stroke(); ctx.shadowColor='transparent'; return; }
   if(kind==='arrow'){ ctx.lineWidth=Math.max(4,Math.min(w,h)*0.15); const ax=-w/2,ay=h/2,bx=w/2,by=-h/2, ang=Math.atan2(by-ay,bx-ax), hl=Math.max(10,Math.min(w,h)*0.34);
     ctx.beginPath(); ctx.moveTo(ax,ay); ctx.lineTo(bx,by); ctx.moveTo(bx,by); ctx.lineTo(bx-Math.cos(ang-0.45)*hl,by-Math.sin(ang-0.45)*hl); ctx.moveTo(bx,by); ctx.lineTo(bx-Math.cos(ang+0.45)*hl,by-Math.sin(ang+0.45)*hl); ctx.stroke(); ctx.shadowColor='transparent'; return; } }
-function drawBg(){ if(ready('background')){ ctx.drawImage(_img.background,0,0,W,H); return; } ctx.fillStyle=getCss('--bg'); ctx.fillRect(0,0,W,H); ctx.fillStyle=getCss('--grid'); const s=28; for(let x=s;x<W;x+=s)for(let y=s;y<H;y+=s)ctx.fillRect(x,y,1.4,1.4);
+function drawBg(){ if(ready('background')){ ctx.drawImage(_img.background,0,0,W,H); return; }
+  if(_ripDriven){ // RIP pixel arena: teal sky, cream pixel stars + cloud band
+    const g=ctx.createLinearGradient(0,0,0,H); g.addColorStop(0,'#3a7d8c'); g.addColorStop(1,'#1e404a'); ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+    ctx.fillStyle='rgba(243,237,200,0.10)'; const s=22; for(let x=8;x<W;x+=s)for(let y=8;y<H*0.82;y+=s){ ctx.fillRect(x,y,2,2); }
+    const base=Math.round(H*0.88), bumps=[0,0,8,12,8,0,12,16,8,0,8,12]; ctx.fillStyle='#bfe0e8';
+    for(let x=0;x<W;x+=12){ const t=base-bumps[((x/12)|0)%bumps.length]; ctx.fillRect(x,t,12,H-t); }
+    ctx.fillStyle='#e6f3f1'; for(let x=0;x<W;x+=12){ if(((x/12)|0)%3===0) ctx.fillRect(x,base-18,12,6); }
+    return; }
+  ctx.fillStyle=getCss('--bg'); ctx.fillRect(0,0,W,H); ctx.fillStyle=getCss('--grid'); const s=28; for(let x=s;x<W;x+=s)for(let y=s;y<H;y+=s)ctx.fillRect(x,y,1.4,1.4);
   const ac=(currentMap&&currentMap.accent)||'#1db954';
   ctx.save(); ctx.globalAlpha=0.045; ctx.fillStyle=ac; ctx.font='900 130px JetBrains Mono'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText((currentMap?currentMap.name:'').toUpperCase(), W/2, H*0.54); ctx.restore();
   ctx.fillStyle='rgba(12,12,16,.55)'; roundRect(16,74,148,H-150,14); ctx.fill();
@@ -397,6 +447,18 @@ function drawCursorShape(g,shape,color,glow,powered){ const fill=powered?'#9be9f
   if(shape==='triangle'){ g.beginPath(); g.moveTo(0,-17); g.lineTo(15,13); g.lineTo(-15,13); g.closePath(); g.fill(); g.shadowColor='transparent'; g.stroke(); return; }
   if(shape==='plus'){ const a=6,b=17; g.beginPath(); g.moveTo(-a,-b);g.lineTo(a,-b);g.lineTo(a,-a);g.lineTo(b,-a);g.lineTo(b,a);g.lineTo(a,a);g.lineTo(a,b);g.lineTo(-a,b);g.lineTo(-a,a);g.lineTo(-b,a);g.lineTo(-b,-a);g.lineTo(-a,-a);g.closePath(); g.fill(); g.shadowColor='transparent'; g.stroke(); return; }
   g.save(); g.translate(-2,-2); arrowPath(g); g.fill(); g.shadowColor='transparent'; g.stroke(); g.restore(); }
+// RIP Designs: a hand-drawn pointer cursor — the player IS the cursor. The
+// client gets the same doodle pointer with a little "glitch" X so it reads evil.
+function drawHandCursor(g,color,glow,powered,isPlayer){ g.save(); g.lineJoin='round'; g.lineCap='round';
+  const pts=[[-11,-14],[-11,9],[-5,3.5],[-1,13],[3,11.4],[-1,2],[7,2]];
+  g.shadowColor=glow||'rgba(40,40,120,.4)'; g.shadowBlur=powered?20:7; g.shadowOffsetY=2;
+  g.beginPath(); g.moveTo(pts[0][0],pts[0][1]); for(let i=1;i<pts.length;i++) g.lineTo(pts[i][0],pts[i][1]); g.closePath();
+  g.fillStyle=powered?'#bff0ff':color; g.fill();
+  g.shadowColor='transparent'; g.shadowOffsetY=0;
+  g.lineWidth=2.4; g.strokeStyle='#14144b'; g.stroke();
+  g.globalAlpha=0.45; g.lineWidth=1; g.beginPath(); g.moveTo(-8,-8.5); g.lineTo(-8,3.5); g.stroke(); g.globalAlpha=1;
+  if(!isPlayer){ g.strokeStyle='#14144b'; g.lineWidth=2; g.beginPath(); g.moveTo(1.5,-10); g.lineTo(7.5,-4); g.moveTo(7.5,-10); g.lineTo(1.5,-4); g.stroke(); }
+  g.restore(); }
 function drawFighter(f){ if(f.dead) return;
   const tr=tier(f.dmg); const vx=tr>=2?Math.sin(f.vib)*2.2:0,vy=tr>=2?Math.cos(f.vib*1.3)*2.2:0; const x=f.x+vx,y=f.y+vy;
   const speed=Math.hypot(f.vx,f.vy),stretch=Math.min(STRETCH_MAX,speed/STRETCH_DIV),ang=Math.atan2(f.vy,f.vx);
@@ -410,14 +472,10 @@ function drawFighter(f){ if(f.dead) return;
   const powered=f.scaleAmt>1.05;
   ctx.save(); ctx.globalAlpha=blinkA;
   ctx.save(); ctx.translate(x,y); ctx.scale((1+f.squash)*f.scaleAmt,(1-f.squash*0.7)*f.scaleAmt);
-  if(ready(f.spriteKey)){ ctx.save();ctx.rotate(ang);ctx.scale(1+stretch,1-stretch*0.45);ctx.rotate(-ang); drawSprite(f.spriteKey,0,0,1); ctx.restore(); }
-  else if(f.char && charReady(f.char.id)){ const inv=f.invinc>0, hue=(performance.now()*0.6)%360;
-    ctx.save(); ctx.rotate(ang);ctx.scale(1+stretch,1-stretch*0.45);ctx.rotate(-ang);
-    ctx.shadowColor=inv?('hsla('+hue+',95%,62%,.85)'):(powered?'rgba(52,224,216,.9)':f.glow); ctx.shadowBlur=powered?22:12;
-    if(inv) ctx.filter='hue-rotate('+hue+'deg) saturate(1.5)'; else if(powered) ctx.filter='brightness(1.25)';
-    drawCharImg(ctx, f.char.id, 56);
-    ctx.restore(); }
-  else { ctx.rotate(ang);ctx.scale(1+stretch,1-stretch*0.45);ctx.rotate(-ang); const inv=f.invinc>0, hue=(performance.now()*0.6)%360, bc=inv?('hsl('+hue+',95%,62%)'):f.color, bg=inv?('hsla('+hue+',95%,62%,.75)'):f.glow; drawCursorShape(ctx,(f.char&&f.char.shape)||'arrow',bc,bg,powered&&!inv); }
+  { // every fighter is a hand-drawn cursor — no uploaded sprite art
+    ctx.rotate(ang);ctx.scale(1+stretch,1-stretch*0.45);ctx.rotate(-ang);
+    const inv=f.invinc>0, hue=(performance.now()*0.6)%360, bc=inv?('hsl('+hue+',95%,62%)'):f.color, bg=inv?('hsla('+hue+',95%,62%,.75)'):f.glow;
+    drawHandCursor(ctx, bc, bg, powered&&!inv, f.isPlayer); }
   ctx.restore();
   if(f.charging>=0 && (f.char&&f.char.ability)==='energy'){ const c=Math.min(1,f.charging/1.2); ctx.save(); ctx.translate(x,y); ctx.shadowColor='rgba(255,90,60,.9)'; ctx.shadowBlur=18; ctx.fillStyle='rgba(255,160,80,'+(0.45+0.4*c)+')'; ctx.beginPath(); ctx.arc(0,0,6+c*22,0,6.2832); ctx.fill(); ctx.restore(); }
   if(f.charged>=0){ const pl=0.5+0.5*Math.sin(performance.now()*0.006); ctx.save(); ctx.translate(x,y); ctx.globalAlpha=0.32+0.22*pl; ctx.shadowColor='rgba(255,110,70,.9)'; ctx.shadowBlur=15+pl*10; ctx.fillStyle='rgba(255,150,95,0.5)'; ctx.beginPath(); ctx.arc(0,0,hurtR(f)+4+pl*2,0,6.2832); ctx.fill(); ctx.restore(); }
@@ -530,7 +588,23 @@ function render(){
   drawMarquee(); drawShapeMarquee(); drawCursorGlyph(); drawBlade(); drawFx();
   if(whiteFlash>0){ ctx.fillStyle='rgba(255,255,255,'+whiteFlash*0.5+')'; ctx.fillRect(-40,-40,W+80,H+80); }
   if(koBanner>0){ const a=Math.min(1,koBanner*2); ctx.globalAlpha=a; ctx.fillStyle=koTxt==='K.O.'?'#34e0d8':(koTxt==='FORCE QUIT'?'#ffd23f':'#ff4d97'); ctx.font='900 '+(koTxt==='K.O.'?84:46)+'px JetBrains Mono'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(koTxt,W/2,H/2); ctx.globalAlpha=1; }
+  drawDesignHUD();
   drawCount();
+  ctx.restore();
+}
+function drawDesignHUD(){ if(!_ripDriven||charSelectOpen) return;
+  const bw=Math.round(Math.min(440,W*0.46)), bh=18, bx=Math.round(W/2-bw/2), by=94;
+  ctx.save(); ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillStyle='#f3edc8'; ctx.font='700 16px "Pixelify Sans", monospace';
+  ctx.fillText('DESIGN INTEGRITY', W/2, by-12);
+  // pixel bar: dark track with cream border (square corners)
+  ctx.fillStyle='#16323a'; ctx.fillRect(bx,by,bw,bh);
+  ctx.lineWidth=3; ctx.strokeStyle='#f3edc8'; ctx.strokeRect(bx+1.5,by+1.5,bw-3,bh-3);
+  const hp=Math.max(0,Math.min(100,designHP)), fw=Math.round((bw-8)*hp/100);
+  const col=hp>55?'#5a9b4a':(hp>25?'#e6c64a':'#d24b3e');
+  if(fw>1){ ctx.fillStyle=col; ctx.fillRect(bx+4,by+4,fw,bh-8); }
+  ctx.fillStyle='#f3edc8'; ctx.font='700 13px "Pixelify Sans", monospace';
+  ctx.fillText(Math.round(hp)+'%', W/2, by+bh+11);
   ctx.restore();
 }
 let acc=0,last=performance.now(),fpsT=0,frames=0; const STEP=1/120;
@@ -542,8 +616,9 @@ function drawCount(){ if(countdown<=-0.6) return; const go=countdown<=0; const t
 function frame(now){ let dt=(now-last)/1000; last=now; dt=Math.min(dt,0.05);
   timeScale+=(1-timeScale)*Math.min(1,dt*2.5); shakeTrauma=Math.max(0,shakeTrauma-dt*1.6);
   if(countdown>-1){ countdown-=dt; const n=countdown>0?Math.ceil(countdown):(countdown>-0.6?0:-1); if(n!==countShown&&n>=0){ if(n===0)_audio.blip(840,0.3,'square',0.18,1260); else _audio.blip(520,0.12,'square',0.14); countShown=n; } }
-  if(hitstop>0||fqActive||charSelectOpen||countdown>0||matchOver||paused){ if(hitstop>0)hitstop-=dt; } else { acc+=dt*timeScale; let st=0; while(acc>=STEP&&st<8){ physics(STEP); acc-=STEP; st++; } }
-  render(); frames++; fpsT+=dt;
+  if(!_arenaActive||hitstop>0||fqActive||charSelectOpen||countdown>0||matchOver||paused){ if(hitstop>0)hitstop-=dt; } else { acc+=dt*timeScale; let st=0; while(acc>=STEP&&st<8){ physics(STEP); acc-=STEP; st++; } }
+  if(_arenaActive){ render(); } else { ctx.clearRect(0,0,W,H); }
+  frames++; fpsT+=dt;
   if(fpsT>=0.4){ document.getElementById('fps').textContent=Math.round(frames/fpsT)+'fps'; frames=0; fpsT=0;
     document.getElementById('pdmg').textContent=Math.round(player.dmg)+'%'; document.getElementById('cdmg').textContent=Math.round(cpu.dmg)+'%';
     document.getElementById('cstate').textContent=cpu.brain.state; document.getElementById('syou').textContent=scoreYou; document.getElementById('scpu').textContent=scoreCpu; }
@@ -596,7 +671,7 @@ function buildMapSelect(){ const grid=document.getElementById('mapgrid'); if(!gr
   MAPS.forEach(m=>{ const card=document.createElement('button'); card.className='mapcard'+(m.id===pendingMap.id?' sel':''); card.innerHTML=mapCardHTML(m);
     card.addEventListener('mouseenter',()=>sndTool()); card.addEventListener('click',()=>selectMap(m.id)); grid.appendChild(card); }); }
 function selectMap(id){ if(id==='custom' && !customFrame){ openImport(); return; } pendingMap=MAPS.find(m=>m.id===id)||MAPS[0]; buildMapSelect(); sndTool(); }
-function startBattle(){ playerChar=pendingChar; if(player){ player.char=playerChar; player.color=playerChar.color; player.glow=playerChar.glow; } if(cpu){ const cc=randomCpuChar(); cpu.char=cc; cpu.color=cc.color; cpu.glow=cc.glow; } currentMap=pendingMap; spawnProps(); document.getElementById('charselect').classList.remove('show'); document.getElementById('mapselect').classList.remove('show'); charSelectOpen=false; countdown=3.0; countShown=-1; sndTool(); }
+function startBattle(){ playerChar=pendingChar; if(player){ player.char=playerChar; player.color=playerChar.color; player.glow=playerChar.glow; } if(cpu){ const cc=randomCpuChar(); cpu.char=cc; cpu.color=cc.color; cpu.glow=cc.glow; } currentMap=pendingMap; spawnProps(); document.getElementById('charselect').classList.remove('show'); document.getElementById('mapselect').classList.remove('show'); charSelectOpen=false; designHP=100; matchOver=false; winnerPending=false; paused=false; _arenaActive=true; /* standalone DOM flow (Club Figma arcade) gates render on this */ countdown=3.0; countShown=-1; sndTool(); }
 const _ssw=document.querySelector('.ssgridwrap'); if(_ssw) _ssw.addEventListener('mouseleave',()=>{ hoverChar=null; updateP1(); });
 document.getElementById('charbtn').addEventListener('click',openCharSelect);
 document.getElementById('ssstart').addEventListener('click',startBattle);
@@ -620,8 +695,36 @@ document.getElementById('impclip').addEventListener('click',function(){ if(navig
 // ---- win state (first to 5 stocks) ----
 function resetFighters(){ for(const f of fighters){ f.dead=false; f.x=f.home.x; f.y=f.home.y; f.tx=f.x; f.ty=f.y; f.vx=f.vy=0; f.dmg=0; f.hitTimer=0; f.scaleTarget=1; f.scaleAmt=1; f.invinc=0; f.gun=0; f.gunCd=0; f.starCd=0; f.dash=null; f.charging=-1; f.charged=-1; f.stun=0; f.respawn=0; f.spawnGuard=0; if(f.held){f.held.held=false;f.held=null;} } }
 function clearArena(){ debris.length=0; bladePts.length=0; bolts.length=0; specials.length=0; fireZones.length=0; drops.length=0; slicing=false; shapeBox=null; }
-function showWinScreen(){ winnerPending=false; matchOver=true; const youWin=scoreYou>=STOCKS_TO_WIN; const t=document.getElementById('winresult'); t.textContent=youWin?'YOU WIN!':'CPU WINS'; t.style.color=youWin?'#0d99ff':'#ff4d97';
+// Capture the destroyed design's data signature so the React "Rebirth Bloom"
+// can grow a plant whose colours + complexity are inherited from this battle.
+function captureBattleDNA(){
+  if(currentDesign && currentDesign.image){
+    const pal=(currentDesign.palette&&currentDesign.palette.length)?currentDesign.palette:['#0052CC','#FF5630','#F4F5F7'];
+    return { fileName: currentDesign.name||'Untitled.fig', layerCount: designTileTotal||12, colorPalette: pal.slice(0,4), image: currentDesign.image, defendedBy: (player&&player.char&&player.char.id)||null };
+  }
+  const f=customFrame; let fileName, layerCount, palette=[];
+  if(f && f.nodes && f.nodes.length){
+    fileName=f.name; layerCount=f.nodes.length;
+    for(const n of f.nodes){ if(n.fill && palette.indexOf(n.fill)<0){ palette.push(n.fill); if(palette.length>=3) break; } }
+  } else {
+    fileName=((currentMap&&currentMap.name)||'Untitled')+'_v'+(1+(Math.random()*8|0))+'_FINAL_client_edits.fig';
+    layerCount=props?props.length:0;
+    if(currentMap&&currentMap.accent) palette.push(currentMap.accent);
+  }
+  const fill=['#0052CC','#FF5630','#F4F5F7'];
+  while(palette.length<3) palette.push(fill[palette.length]);
+  return { fileName, layerCount, colorPalette: palette };
+}
+let _ripDriven=false;   // true when React's app shell launched this match
+let _arenaActive=false; // true only while a match is live — gates the sim/render so the brawler doesn't run idle behind the console
+function showWinScreen(){ winnerPending=false; matchOver=true; const youWin=scoreYou>=STOCKS_TO_WIN;
+  try{ window.__ripBattleDNA=captureBattleDNA(); }catch(e){}
+  // In RIP Designs, YOU defend the design; the AI ("Heartless Client") tries to
+  // smash it. A player win means the design survived and can be planted.
+  if(_ripDriven){ sndWin(); try{ window.dispatchEvent(new CustomEvent('ripdesigns:matchend',{detail:{youWin, dna:window.__ripBattleDNA}})); }catch(e){} return; }
+  const t=document.getElementById('winresult'); t.textContent=youWin?'YOU WIN!':'CPU WINS'; t.style.color=youWin?'#0d99ff':'#ff4d97';
   document.getElementById('winscore').innerHTML='<span style="color:#0d99ff">'+scoreYou+'</span> &nbsp;—&nbsp; <span style="color:#ff4d97">'+scoreCpu+'</span>';
+  const gbtn=document.getElementById('wingarden'); if(gbtn) gbtn.style.display=youWin?'':'none';
   document.getElementById('winscreen').classList.add('show'); sndWin(); }
 function rematch(){ document.getElementById('winscreen').classList.remove('show'); matchOver=false; winnerPending=false; scoreYou=scoreCpu=0; resetFighters(); clearArena(); spawnProps(); countdown=3.0; countShown=-1; sndTool(); }
 function winToCharSelect(){ document.getElementById('winscreen').classList.remove('show'); matchOver=false; winnerPending=false; scoreYou=scoreCpu=0; resetFighters(); clearArena(); spawnProps(); openCharSelect(); }
@@ -777,13 +880,42 @@ if (window.opener) {
   try { (window.opener as any).postMessage({ type: 'figsmash-ready' }, '*'); } catch(e) {}
 }
 
+// ---- RIP Designs: app-shell control surface (the React shell drives the flow) ----
+function ripLoadImageStage(dataUrl, name, cb){
+  const im=new Image();
+  im.onload=function(){ imageStage={ img:im, name:name||'Untitled.fig', image:dataUrl, palette:samplePalette(im) }; currentDesign=imageStage; try{ spawnProps(); }catch(e){} if(cb) cb({ palette:imageStage.palette }); };
+  im.onerror=function(){ imageStage={ img:null, name:name||'Untitled.fig', image:dataUrl, palette:['#0052CC','#FF5630','#F4F5F7'] }; currentDesign=imageStage; if(cb) cb({ palette:currentDesign.palette }); };
+  im.src=dataUrl;
+}
+function ripStartMatch(opts){ opts=opts||{};
+  _ripDriven=true;
+  if(opts.difficulty){ applyLevel(opts.difficulty); var _m=document.getElementById('model'); if(_m) _m.value=opts.difficulty; }
+  var c=CHARACTERS.find(function(x){ return x.id===opts.charId; })||CHARACTERS[0];
+  pendingChar=c;
+  ['charselect','mapselect','importdlg','winscreen','pausemenu'].forEach(function(id){ var e=document.getElementById(id); if(e) e.classList.remove('show'); });
+  scoreYou=scoreCpu=0; matchOver=false; winnerPending=false; paused=false; designHP=100; _arenaActive=true;
+  startBattle();
+}
+function ripForfeit(){ matchOver=true; winnerPending=false; paused=false; countdown=-99; _arenaActive=false;
+  ['winscreen','pausemenu'].forEach(function(id){ var e=document.getElementById(id); if(e) e.classList.remove('show'); }); }
+// Select a built-in prop stage (Spotifight / Smack / Figtube …) instead of an
+// imported design image. Clears any image stage so spawnProps builds the map.
+function ripSetStage(id){ var m=MAPS.find(function(x){ return x.id===id; }); if(!m) return; imageStage=null; currentDesign=null; currentMap=m; pendingMap=m; try{ spawnProps(); }catch(e){} }
+(window as any).RIPArena={ loadImageStage:ripLoadImageStage, startMatch:ripStartMatch, forfeit:ripForfeit, setStage:ripSetStage,
+  characters:CHARACTERS.map(function(c){ return { id:c.id, name:c.name, color:c.color, ability:c.desc, shape:c.shape }; }),
+  stages:MAPS.filter(function(m){ return m.id!=='custom'; }).map(function(m){ return { id:m.id, name:m.name, sub:m.sub, accent:m.accent }; }) };
+try{ window.dispatchEvent(new CustomEvent('ripdesigns:arena-ready')); }catch(e){}
+
 if (_deepLinkImported) {
   openCharSelect();
 } else if (window.opener) {
   // Opened from plugin — wait up to 3s for full payload before falling back to map select
   _openerTimeout = setTimeout(function() { _openerTimeout = null; openMapSelectFirst(); }, 3000);
-} else {
+} else if (!(window as any).__figsmashRipShell) {
+  // Club Figma arcade: no RipShell present, so auto-open the stage picker
+  // (the RipShell sets window.__figsmashRipShell to keep the engine idle).
   openMapSelectFirst();
 }
+// Otherwise stay idle: the React RipShell drives start → garden → import → arena.
 
 }

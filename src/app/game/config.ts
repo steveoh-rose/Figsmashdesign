@@ -38,6 +38,8 @@ export interface Level {
   canPunch: boolean;
   leadAim: boolean;
   wind: number;
+  /** Seconds between the client's attacks on the design. Higher = dumber/slower. */
+  designRate: number;
 }
 
 // Mutable — sliders write through to this object.
@@ -50,18 +52,18 @@ export const T = {
 };
 
 export const LEVELS: Level[] = [
-  { id: 'ollama', short: 'ollama', desc: 'just vibes toward you. harmless.',     reaction: 0.90, jitter: 0.50, aggro: 0.00, speedCap: 240, driftOnly: true,  canThrow: false, canDodge: false, canPunch: false, leadAim: false, wind: 0.50 },
-  { id: 'haiku',  short: 'haiku',  desc: 'fast reflexes, shallow tactics.',       reaction: 0.42, jitter: 0.30, aggro: 0.30, speedCap: 540, driftOnly: false, canThrow: true,  canDodge: false, canPunch: true,  leadAim: false, wind: 0.42 },
-  { id: 'sonnet', short: 'sonnet', desc: 'sharp all-rounder. reads your throws.', reaction: 0.26, jitter: 0.14, aggro: 0.55, speedCap: 660, driftOnly: false, canThrow: true,  canDodge: true,  canPunch: true,  leadAim: true,  wind: 0.30 },
-  { id: 'opus',   short: 'opus',   desc: 'relentless, precise, leads your moves.', reaction: 0.14, jitter: 0.05, aggro: 0.85, speedCap: 780, driftOnly: false, canThrow: true,  canDodge: true,  canPunch: true,  leadAim: true,  wind: 0.22 },
+  { id: 'ollama', short: 'ollama', desc: 'slow & clumsy. lazy punches, easy to KO.',  reaction: 0.95, jitter: 0.55, aggro: 0.12, speedCap: 360, driftOnly: false, canThrow: false, canDodge: false, canPunch: true,  leadAim: false, wind: 0.50, designRate: 4.2 },
+  { id: 'haiku',  short: 'haiku',  desc: 'fast reflexes, shallow tactics.',       reaction: 0.42, jitter: 0.30, aggro: 0.30, speedCap: 540, driftOnly: false, canThrow: true,  canDodge: false, canPunch: true,  leadAim: false, wind: 0.42, designRate: 2.8 },
+  { id: 'sonnet', short: 'sonnet', desc: 'sharp all-rounder. reads your throws.', reaction: 0.26, jitter: 0.14, aggro: 0.55, speedCap: 660, driftOnly: false, canThrow: true,  canDodge: true,  canPunch: true,  leadAim: true,  wind: 0.30, designRate: 1.8 },
+  { id: 'opus',   short: 'opus',   desc: 'relentless, precise, leads your moves.', reaction: 0.14, jitter: 0.05, aggro: 0.85, speedCap: 780, driftOnly: false, canThrow: true,  canDodge: true,  canPunch: true,  leadAim: true,  wind: 0.22, designRate: 1.1 },
 ];
 
 export const CHARACTERS: Character[] = [
-  { id: 'mario',   name: 'Oldschool Plumber', shape: 'arrow',    color: '#e52521', glow: 'rgba(229,37,33,.5)',  rgb: '229,37,33',  ability: 'fireball',  desc: 'Fireball Shot' },
-  { id: 'pikachu', name: 'Electric Rat',      shape: 'triangle', color: '#ffcb05', glow: 'rgba(255,203,5,.5)',  rgb: '255,203,5',  ability: 'lightning', desc: 'Lightning Charge' },
-  { id: 'fox',     name: 'Flame Dog',         shape: 'diamond',  color: '#f0820f', glow: 'rgba(240,130,15,.5)', rgb: '240,130,15', ability: 'fire',      desc: 'Fire Charge' },
-  { id: 'samus',   name: 'Space Gurl',        shape: 'ring',     color: '#ff5a3c', glow: 'rgba(255,90,60,.5)',  rgb: '255,90,60',  ability: 'energy',    desc: 'Energy Ball (hold)' },
-  { id: 'link',    name: 'Sleepy Elf',        shape: 'plus',     color: '#2fa84f', glow: 'rgba(47,168,79,.5)',  rgb: '47,168,79',  ability: 'boomerang', desc: 'Homing Boomerang' },
+  { id: 'mario',   name: 'Ink Cursor',   shape: 'arrow',    color: '#2f6bff', glow: 'rgba(47,107,255,.5)', rgb: '47,107,255', ability: 'fireball',  desc: 'Ink Bomb' },
+  { id: 'pikachu', name: 'Spark Cursor', shape: 'triangle', color: '#ffc21f', glow: 'rgba(255,194,31,.5)', rgb: '255,194,31', ability: 'lightning', desc: 'Static Zap' },
+  { id: 'fox',     name: 'Ember Cursor', shape: 'diamond',  color: '#f0820f', glow: 'rgba(240,130,15,.5)', rgb: '240,130,15', ability: 'fire',      desc: 'Ember Dash' },
+  { id: 'samus',   name: 'Orbit Cursor', shape: 'ring',     color: '#ff5a8a', glow: 'rgba(255,90,138,.5)', rgb: '255,90,138', ability: 'energy',    desc: 'Energy Orb (hold)' },
+  { id: 'link',    name: 'Loop Cursor',  shape: 'plus',     color: '#1db981', glow: 'rgba(29,185,129,.5)', rgb: '29,185,129', ability: 'boomerang', desc: 'Homing Loop' },
 ];
 
 export const SHAPES: Shape[] = [

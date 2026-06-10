@@ -2,8 +2,8 @@ export function HudHeader() {
   return (
     <>
       <div className="head">
-        <h1>FIG <b>SMASH</b> — Phase 4</h1>
-        <p>juice, sound &amp; the Force Quit finisher</p>
+        <h1>RIP <b>DESIGNS</b></h1>
+        <p>smash the dead file · grow the garden</p>
       </div>
       <div className="score">
         <div className="s">

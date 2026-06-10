@@ -1,0 +1,322 @@
+/**
+ * FigConsole 67 — a fictional retro arcade OS you boot while a stakeholder
+ * reviews your file. A vintage "Game Creator Pro" desktop holds four
+ * cartridges; each boots with a cartridge slide-in and tracks a high score +
+ * the headline "Time Saved While Waiting".
+ *
+ * Ported from rip-designs-catharsis-garden. FigHero/FigContrast/FigAlign run
+ * inline; FigSmash drives the shared brawler engine via window.RIPArena (the
+ * engine + its DOM are mounted by ClubFigmaWorld). `onExit` closes back to the
+ * Club Figma lobby.
+ */
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useClock, useConsole, type CartridgeId } from './store';
+import { CHARACTERS } from '../../app/game/config';
+import { VoxelGhost, VoxelSmiley, VoxelEye, VoxelTriangle } from './voxel';
+import { ShortcutHero } from '../games/ShortcutHero';
+import { FigContrast } from '../games/FigContrast';
+import { FigAlign } from '../games/FigAlign';
+import './console.css';
+
+/** A small pixel pointer cursor in a fighter's colour. */
+function CursorChip({ color }: { color: string }) {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" style={{ imageRendering: 'pixelated' }}>
+      <path d="M5 3 L5 19 L9 15 L12 21 L14.5 20 L11.5 14 L18 14 Z" fill={color} stroke="#000" strokeWidth="1.6" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+type Mode = 'desktop' | 'stageselect' | 'boot' | 'game';
+
+interface SmashStage { id: string; name: string; sub: string; accent: string; }
+const SMASH_STAGES: SmashStage[] = [
+  { id: 'design', name: 'REVIEW BUILD', sub: 'YOUR .FIG', accent: '#e7b53c' },
+  { id: 'spotify', name: 'SPOTIFIGHT', sub: 'MUSIC APP', accent: '#1db954' },
+  { id: 'slack', name: 'SMACK', sub: 'CHAT APP', accent: '#b06cd9' },
+  { id: 'youtube', name: 'FIGTUBE', sub: 'VIDEO APP', accent: '#ff4d4d' },
+];
+const SMASH_DIFFS = [
+  { id: 'ollama', name: 'INTERN' },
+  { id: 'haiku', name: 'JUNIOR' },
+  { id: 'sonnet', name: 'SENIOR' },
+  { id: 'opus', name: 'DIRECTOR' },
+];
+
+interface Cart {
+  id: CartridgeId;
+  name: string;
+  tag: string;
+  blurb: string;
+  color: string;
+  art: React.ReactNode;
+}
+
+const CARTS: Cart[] = [
+  { id: 'figsmash', name: 'FigSmash', tag: 'BRAWLER', blurb: 'KO the Unaligned Stakeholder.', color: '#ef5d52', art: <VoxelGhost /> },
+  { id: 'fighero', name: 'Shortcut Hero', tag: 'SIMON', blurb: 'Repeat the shortcut sequence.', color: '#4d7cff', art: <VoxelSmiley /> },
+  { id: 'figcontrast', name: 'FigContrast', tag: 'CALIBRATE', blurb: 'Memorise + rebuild the colour.', color: '#2ec4b6', art: <VoxelEye /> },
+  { id: 'figalign', name: 'Match da Shape', tag: 'MEMORY', blurb: 'Memorise + rebuild the shape.', color: '#ff9f43', art: <VoxelTriangle /> },
+];
+
+const SMASH_DESIGN = `data:image/svg+xml;utf8,${encodeURIComponent(
+  `<svg xmlns='http://www.w3.org/2000/svg' width='200' height='150'><rect width='200' height='150' fill='#f3edc8'/><rect width='200' height='26' fill='#4a2d5c'/><rect x='12' y='40' width='80' height='50' fill='#d24b3e'/><rect x='104' y='40' width='84' height='22' fill='#46c6d9'/><rect x='104' y='70' width='84' height='20' fill='#6cc36a'/><rect x='12' y='104' width='176' height='10' fill='#b06cd9'/><rect x='12' y='124' width='110' height='10' fill='#999'/></svg>`
+)}`;
+
+function fmtClock(d: Date) {
+  const days = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+  let h = d.getHours();
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  h = h % 12 || 12;
+  const m = d.getMinutes().toString().padStart(2, '0');
+  return `${days[d.getDay()]} ${h.toString().padStart(2, '0')}:${m}${ampm}`;
+}
+
+function fmtSaved(sec: number) {
+  const m = Math.floor(sec / 60), s = sec % 60;
+  if (m >= 60) { const h = Math.floor(m / 60); return `${h}H ${m % 60}M`; }
+  return `${m}M ${s.toString().padStart(2, '0')}S`;
+}
+
+export function FigConsole({ onExit }: { onExit?: () => void }) {
+  const { state, submitScore, addTimeSaved } = useConsole();
+  const clock = useClock();
+  const [mode, setMode] = useState<Mode>('desktop');
+  const [active, setActive] = useState<CartridgeId | null>(null);
+  const [selected, setSelected] = useState<CartridgeId>('figsmash');
+  const [results, setResults] = useState<{ cart: CartridgeId; score: number; isHigh: boolean; win?: boolean } | null>(null);
+  const [smashStage, setSmashStage] = useState('design');
+  const [smashChar, setSmashChar] = useState(CHARACTERS[0].id);
+  const [smashDiff, setSmashDiff] = useState('haiku');
+  const bootTimer = useRef<number | null>(null);
+
+  const arena = () => (window as any).RIPArena;
+
+  const startBoot = useCallback((id: CartridgeId, after?: () => void) => {
+    setActive(id);
+    setMode('boot');
+    if (bootTimer.current) clearTimeout(bootTimer.current);
+    bootTimer.current = window.setTimeout(() => { setMode('game'); after?.(); }, 2300);
+  }, []);
+
+  const launchSmash = useCallback(() => {
+    startBoot('figsmash', () => {
+      document.body.classList.add('rip-arena', 'fc-smash');
+      const ra = arena();
+      if (!ra) return;
+      if (smashStage === 'design') ra.loadImageStage(SMASH_DESIGN, 'review_build_v3.fig', () => ra.startMatch({ charId: smashChar, difficulty: smashDiff }));
+      else { ra.setStage(smashStage); ra.startMatch({ charId: smashChar, difficulty: smashDiff }); }
+    });
+  }, [startBoot, smashStage, smashChar, smashDiff]);
+
+  // FigSmash routes through stage select first; other carts boot straight in.
+  const launch = useCallback((id: CartridgeId) => {
+    setSelected(id);
+    setResults(null);
+    if (id === 'figsmash') { setActive('figsmash'); setMode('stageselect'); return; }
+    startBoot(id);
+  }, [startBoot]);
+
+  const finishGame = useCallback((id: CartridgeId, score: number, secondsPlayed: number, win?: boolean) => {
+    const isHigh = submitScore(id, score);
+    addTimeSaved(secondsPlayed);
+    document.body.classList.remove('rip-arena', 'fc-smash');
+    setActive(null);
+    setMode('desktop');
+    setResults({ cart: id, score, isHigh, win });
+  }, [submitScore, addTimeSaved]);
+
+  const ejectSmash = useCallback(() => {
+    arena()?.forfeit?.();
+    finishGame('figsmash', 0, 30, false);
+  }, [finishGame]);
+
+  // FigSmash result comes from the engine's matchend event.
+  useEffect(() => {
+    const onEnd = (e: Event) => {
+      if (active !== 'figsmash') return;
+      const youWin = (e as CustomEvent).detail?.youWin;
+      finishGame('figsmash', youWin ? 1200 : 200, 45, youWin);
+    };
+    window.addEventListener('ripdesigns:matchend', onEnd as EventListener);
+    return () => window.removeEventListener('ripdesigns:matchend', onEnd as EventListener);
+  }, [active, finishGame]);
+
+  // Esc ejects a cartridge, or closes the console back to the lobby from desktop.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      if (mode === 'game' && active === 'figsmash') ejectSmash();
+      else if (mode === 'game') { document.body.classList.remove('rip-arena', 'fc-smash'); setActive(null); setMode('desktop'); }
+      else if (mode === 'stageselect') { setActive(null); setMode('desktop'); }
+      else if (mode === 'desktop') onExit?.();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [mode, active, ejectSmash, onExit]);
+
+  // FigSmash takes over the whole canvas; render only a thin boss banner.
+  if (mode === 'game' && active === 'figsmash') {
+    return (
+      <div className="fc-smashbar">
+        <span className="fc-blink">●</span> BOSS ENCOUNTER: <b>THE UNALIGNED STAKEHOLDER</b> — KO it 3× to ship · <button onClick={ejectSmash}>⎋ EJECT</button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="fc-root">
+      <div className="fc-window">
+        <div className="fc-titlebar">
+          <button className="fc-close" aria-label="Close to lobby" onClick={() => onExit?.()}><i /></button>
+          <span className="fc-title">GAME CREATOR PRO v1.67</span>
+          <span className="fc-clock">{fmtClock(clock)}</span>
+        </div>
+        <div className="fc-menubar">
+          <span className="fc-menu-exe">💾 EXECUTABLE</span>
+          <button className="fc-menu-run" onClick={() => launch(selected)}>▶ RUN</button>
+          <span className="fc-menu-edit">🛠 EDIT</span>
+          <span className="fc-menu-spacer" />
+          <span className="fc-saved">⏱ TIME SAVED <b>{fmtSaved(state.timeSavedSec)}</b></span>
+        </div>
+
+        <div className="fc-body">
+          {mode === 'game' && active === 'fighero' && (
+            <ShortcutHero highScore={state.highScores.fighero} onExit={(s, t) => finishGame('fighero', s, t)} />
+          )}
+          {mode === 'game' && active === 'figcontrast' && (
+            <FigContrast highScore={state.highScores.figcontrast} onExit={(s, t) => finishGame('figcontrast', s, t)} />
+          )}
+          {mode === 'game' && active === 'figalign' && (
+            <FigAlign highScore={state.highScores.figalign} onExit={(s, t) => finishGame('figalign', s, t)} />
+          )}
+
+          {mode === 'desktop' && (
+            <div className="fc-desktop">
+              <div className="fc-carts">
+                {CARTS.map((c) => (
+                  <button
+                    key={c.id}
+                    className={`fc-cart ${selected === c.id ? 'sel' : ''}`}
+                    style={{ ['--cc' as string]: c.color }}
+                    onClick={() => setSelected(c.id)}
+                    onDoubleClick={() => launch(c.id)}
+                  >
+                    <span className="fc-cart-art">{c.art}</span>
+                    <span className="fc-cart-name">{c.name}</span>
+                    <span className="fc-cart-tag">{c.tag}</span>
+                    <span className="fc-cart-hi">HI {state.highScores[c.id].toString().padStart(5, '0')}</span>
+                  </button>
+                ))}
+              </div>
+              <div className="fc-sidebar">
+                <div className="fc-drive">💾 HD</div>
+                <div className="fc-drive">💾 CORE</div>
+                <div className="fc-drive">🗑 BIN</div>
+                <div className="fc-sidenote">
+                  <div className="fc-sel-name">{CARTS.find((c) => c.id === selected)?.name}</div>
+                  <div className="fc-sel-blurb">{CARTS.find((c) => c.id === selected)?.blurb}</div>
+                  <button className="fc-btn fc-btn-gold fc-insert" onClick={() => launch(selected)}>INSERT ▶</button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {mode === 'stageselect' && (
+            <div className="fc-stagesel">
+              <div className="fc-ss-title">▶ SELECT STAGE</div>
+              <div className="fc-ss-grid">
+                {SMASH_STAGES.map((s) => (
+                  <button
+                    key={s.id}
+                    className={`fc-ss-card ${smashStage === s.id ? 'sel' : ''}`}
+                    style={{ ['--cc' as string]: s.accent }}
+                    onClick={() => setSmashStage(s.id)}
+                    onDoubleClick={launchSmash}
+                  >
+                    <span className="fc-ss-prev">
+                      <i className="fc-ss-bar" style={{ background: s.accent }} />
+                      <i className="fc-ss-blk" style={{ background: s.accent }} />
+                      <i className="fc-ss-row" /><i className="fc-ss-row short" />
+                    </span>
+                    <span className="fc-ss-name">{s.name}</span>
+                    <span className="fc-ss-sub">{s.sub}</span>
+                  </button>
+                ))}
+              </div>
+              <div className="fc-ss-title fc-ss-subtitle">▶ SELECT FIGHTER</div>
+              <div className="fc-ss-chars">
+                {CHARACTERS.map((c) => (
+                  <button
+                    key={c.id}
+                    className={`fc-ss-char ${smashChar === c.id ? 'sel' : ''}`}
+                    style={{ ['--cc' as string]: c.color }}
+                    onClick={() => setSmashChar(c.id)}
+                    onDoubleClick={launchSmash}
+                    title={`${c.name} — ${c.desc}`}
+                  >
+                    <CursorChip color={c.color} />
+                    <span className="fc-ss-charname">{c.name.replace(' Cursor', '')}</span>
+                    <span className="fc-ss-charpow">{c.desc}</span>
+                  </button>
+                ))}
+              </div>
+
+              <div className="fc-ss-diff">
+                <span className="fc-ss-difflabel">CLIENT IQ</span>
+                {SMASH_DIFFS.map((d) => (
+                  <button key={d.id} className={smashDiff === d.id ? 'on' : ''} onClick={() => setSmashDiff(d.id)}>{d.name}</button>
+                ))}
+              </div>
+              <div className="fc-ss-btns">
+                <button className="fc-btn" onClick={() => { setActive(null); setMode('desktop'); }}>← DESKTOP</button>
+                <button className="fc-btn fc-btn-gold" onClick={launchSmash}>FIGHT! ▶</button>
+              </div>
+            </div>
+          )}
+
+          {mode === 'boot' && active && (
+            <div className="fc-boot">
+              <div className="fc-slot">
+                <div className="fc-cartridge" style={{ ['--cc' as string]: CARTS.find((c) => c.id === active)?.color }}>
+                  <span className="fc-cartridge-label">{CARTS.find((c) => c.id === active)?.art}</span>
+                  <span className="fc-cartridge-name">{CARTS.find((c) => c.id === active)?.name}</span>
+                </div>
+                <div className="fc-slotmouth" />
+              </div>
+              <div className="fc-bootmsg">
+                <span className="fc-blink">▌</span> LOADING {CARTS.find((c) => c.id === active)?.name}.ROM …
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="fc-statusbar">
+          <span>FIGCONSOLE 67</span>
+          <span>{mode === 'desktop' ? 'READY.' : mode === 'stageselect' ? 'SELECT STAGE' : mode === 'boot' ? 'BOOTING…' : 'RUNNING'}</span>
+          <span className="fc-blink">_</span>
+        </div>
+      </div>
+
+      {results && (
+        <div className="fc-results" onClick={() => setResults(null)}>
+          <div className="fc-results-box" onClick={(e) => e.stopPropagation()} style={{ ['--cc' as string]: CARTS.find((c) => c.id === results.cart)?.color }}>
+            {results.cart === 'figsmash' ? (
+              <div className="fc-approved">{results.win ? '★ FILE APPROVED! ★' : 'REVIEW BLOCKED'}</div>
+            ) : (
+              <>
+                <div className="fc-results-title">{CARTS.find((c) => c.id === results.cart)?.name} · GAME OVER</div>
+                <div className="fc-results-score">{results.score.toString().padStart(6, '0')}</div>
+                {results.isHigh && <div className="fc-results-hi">★ NEW HIGH SCORE ★</div>}
+              </>
+            )}
+            <div className="fc-results-btns">
+              <button className="fc-btn" onClick={() => setResults(null)}>DESKTOP</button>
+              <button className="fc-btn fc-btn-gold" onClick={() => launch(results.cart)}>RETRY ▶</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
