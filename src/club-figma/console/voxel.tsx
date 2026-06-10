@@ -46,7 +46,7 @@ export const VoxelGhost = ({ size }: { size?: number }) => (
   <VoxelSprite grid={GHOST} palette={{ r: C.coral, w: C.white, k: C.ink }} size={size} />
 );
 
-// FigHero — a chipper voxel smiley.
+// Shortcut Hero — a chipper voxel smiley.
 const SMILEY = ['..bbbbb..', '.bbbbbbb.', 'bbbbbbbbb', 'bbwbbbwbb', 'bbbbbbbbb', 'bwbbbbbwb', 'bbwwwwwbb', '.bbbbbbb.', '..bbbbb..'];
 export const VoxelSmiley = ({ size }: { size?: number }) => (
   <VoxelSprite grid={SMILEY} palette={{ b: C.blue, w: C.white }} size={size} />
@@ -58,7 +58,7 @@ export const VoxelEye = ({ size }: { size?: number }) => (
   <VoxelSprite grid={EYE} palette={{ t: C.teal, w: C.white, k: C.ink }} size={size} />
 );
 
-// FigAlign — a voxel triangle (the shape).
+// Match da Shape — a voxel triangle.
 const TRI = ['....o....', '....o....', '...ooo...', '...ooo...', '..ooooo..', '..ooooo..', '.ooooooo.', 'ooooooooo', 'ooooooooo'];
 export const VoxelTriangle = ({ size }: { size?: number }) => (
   <VoxelSprite grid={TRI} palette={{ o: '#ff9f43' }} size={size} />
