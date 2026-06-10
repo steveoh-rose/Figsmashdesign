@@ -13,7 +13,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useClock, useConsole, type CartridgeId } from './store';
 import { CHARACTERS } from '../../app/game/config';
 import { VoxelGhost, VoxelSmiley, VoxelEye, VoxelTriangle } from './voxel';
-import { FigHero } from '../games/FigHero';
+import { ShortcutHero } from '../games/ShortcutHero';
 import { FigContrast } from '../games/FigContrast';
 import { FigAlign } from '../games/FigAlign';
 import './console.css';
@@ -54,7 +54,7 @@ interface Cart {
 
 const CARTS: Cart[] = [
   { id: 'figsmash', name: 'FigSmash', tag: 'BRAWLER', blurb: 'KO the Unaligned Stakeholder.', color: '#ef5d52', art: <VoxelGhost /> },
-  { id: 'fighero', name: 'FigHero', tag: 'RHYTHM', blurb: 'Shortcut muscle-memory drill.', color: '#4d7cff', art: <VoxelSmiley /> },
+  { id: 'fighero', name: 'Shortcut Hero', tag: 'SIMON', blurb: 'Repeat the shortcut sequence.', color: '#4d7cff', art: <VoxelSmiley /> },
   { id: 'figcontrast', name: 'FigContrast', tag: 'CALIBRATE', blurb: 'Memorise + rebuild the colour.', color: '#2ec4b6', art: <VoxelEye /> },
   { id: 'figalign', name: 'FigAlign', tag: 'SHAPE', blurb: 'Memorise + rebuild the shape.', color: '#ff9f43', art: <VoxelTriangle /> },
 ];
@@ -182,7 +182,7 @@ export function FigConsole({ onExit }: { onExit?: () => void }) {
 
         <div className="fc-body">
           {mode === 'game' && active === 'fighero' && (
-            <FigHero highScore={state.highScores.fighero} onExit={(s, t) => finishGame('fighero', s, t)} />
+            <ShortcutHero highScore={state.highScores.fighero} onExit={(s, t) => finishGame('fighero', s, t)} />
           )}
           {mode === 'game' && active === 'figcontrast' && (
             <FigContrast highScore={state.highScores.figcontrast} onExit={(s, t) => finishGame('figcontrast', s, t)} />
