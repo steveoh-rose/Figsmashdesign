@@ -67,6 +67,15 @@ const CURSOR_CHARS: CursorChar[] = [
 
 const TRANSIT_DURATION = 3.2;
 
+// localStorage throws in Figma's sandboxed plugin iframe — guard every call so
+// it can't crash the React render (blank screen).
+function lsGet(key: string): string | null {
+  try { return localStorage.getItem(key); } catch { return null; }
+}
+function lsSet(key: string, value: string): void {
+  try { localStorage.setItem(key, value); } catch { /* ignore */ }
+}
+
 interface NPC {
   id: number;
   name: string; color: string;
@@ -1330,7 +1339,7 @@ export function ClubFigmaWorld() {
   const loadedImagesRef = useRef(new Map<string, HTMLImageElement>());
 
   const transitRef = useRef<TransitState | null>(null);
-  const selectedCursorRef = useRef<string>(localStorage.getItem('cf.cursor') || 'ink');
+  const selectedCursorRef = useRef<string>(lsGet('cf.cursor') || 'ink');
   const worldRef = useRef({ W: 0, H: 0 });
   const goToRef = useRef<(r: RoomId) => void>(() => {});
 
@@ -1342,7 +1351,7 @@ export function ClubFigmaWorld() {
   const [showConnect, setShowConnect] = useState(false);
   const [expoStatus, setExpoStatus] = useState<'idle' | 'loading' | 'error'>('idle');
   const [showWardrobe, setShowWardrobe] = useState(false);
-  const [selectedCursorId, setSelectedCursorId] = useState(() => localStorage.getItem('cf.cursor') || 'ink');
+  const [selectedCursorId, setSelectedCursorId] = useState(() => lsGet('cf.cursor') || 'ink');
   const { state: consoleState } = useConsole();
 
   const figmaConfigRef = useRef(figmaConfig);
@@ -1352,7 +1361,7 @@ export function ClubFigmaWorld() {
   const selectCursor = useCallback((charId: string) => {
     selectedCursorRef.current = charId;
     setSelectedCursorId(charId);
-    localStorage.setItem('cf.cursor', charId);
+    lsSet('cf.cursor', charId);
     setShowWardrobe(false);
   }, []);
 
